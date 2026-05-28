@@ -1,0 +1,4 @@
+interface:
+  display_name: "Solo Ship"
+  short_description: "Review, ship, verify, and clean up solo dev work"
+  default_prompt: "Use $solo-ship to review, fix, commit, push, merge, verify, and clean up the current branch."
