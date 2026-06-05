@@ -78,18 +78,20 @@ Use existing skills by opening their `SKILL.md` when they are relevant and avail
 
 | Phase | Skills to use | Use when | Exit condition |
 | --- | --- | --- | --- |
-| Review | `review` or `gstack-review` | Any non-cleanup shipping task | Findings are addressed or explicitly accepted |
+| Review | `review` (`gstack-review` only if the host exposes that alias) | Any non-cleanup shipping task | Findings are addressed or explicitly accepted |
 | Fix | `superpowers:receiving-code-review` | Review or tests find issues | Fixes are implemented and diff is rechecked |
 | Debug | `superpowers:systematic-debugging`, `diagnose` | Failure cause is unclear | Root cause is found and fixed, or blocker is clear |
 | TDD | `tdd`, `superpowers:test-driven-development` | New behavior, bug fixes, or `strict` mode | Tests demonstrate the intended behavior or non-use is justified |
 | Verify | `superpowers:verification-before-completion`, `health` | Before commit, before merge, and after merge | Relevant verification commands have run and results are known |
-| Commit and Push | `github:yeet` | Ready to create commits and push | Commit scope is correct, message explains why, push succeeds |
-| PR Review | `github:github`, `github:gh-address-comments` | `pr=true`, `merge=pr`, existing PR, or `strict` mode | PR diff is reviewed and comments are resolved or recorded |
-| CI Fix | `github:gh-fix-ci` | GitHub checks fail | CI cause is fixed or external blocker is identified |
+| Commit and Push | `github:yeet`, `yeet`, or explicit `git` + `gh` CLI fallback | Ready to create commits and push | Commit scope is correct, message explains why, push succeeds |
+| PR Review | `github:github`, `github:gh-address-comments`, unprefixed equivalents, or explicit `gh` CLI fallback | `pr=true`, `merge=pr`, existing PR, or `strict` mode | PR diff is reviewed and comments are resolved or recorded |
+| CI Fix | `github:gh-fix-ci`, `gh-fix-ci`, or explicit `gh run` / `gh pr checks` fallback | GitHub checks fail | CI cause is fixed or external blocker is identified |
 | Merge | `ship` | Standard merge workflow | Work is merged to `main` or `master` |
 | Deploy Merge | `land-and-deploy` | Deployment or post-merge canary matters | CI, deploy, and user-visible verification are complete |
-| Docs | `document-release`, `changelog` | `docs=required`, `strict` mode, or user-visible behavior changes | Docs/changelog updated or explicit no-doc rationale is recorded |
+| Docs | `document-release`, `changelog`, or manual changelog note | `docs=required`, `strict` mode, or user-visible behavior changes | Docs/changelog updated or explicit no-doc rationale is recorded |
 | Cleanup | `superpowers:finishing-a-development-branch`, `careful`, `guard` | After successful post-merge verification | Redundant branch/worktree cleanup is complete or intentionally skipped |
+
+Host naming differs. Codex plugin skills may be visible with prefixes such as `github:yeet` or `superpowers:test-driven-development`; Claude Code may expose local skills without those prefixes, or may require a manual `gh` CLI fallback. Treat a phase as ready when one suitable skill or explicit fallback is available. If availability is unclear, run `setup`.
 
 ## Workflow
 
