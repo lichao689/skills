@@ -1,0 +1,4 @@
+interface:
+  display_name: "Setup"
+  short_description: "Check and repair this skills package"
+  default_prompt: "Use $setup to install, check, and repair this skills package for Codex and Claude Code."
