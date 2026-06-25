@@ -192,7 +192,7 @@ check_host() {
   check_stage "$host" "orchestrator" "" solo-ship
   check_stage "$host" "review" "" review gstack-review
   check_stage "$host" "fix" "" superpowers:receiving-code-review receiving-code-review
-  check_stage "$host" "debug" "" superpowers:systematic-debugging systematic-debugging diagnose
+  check_stage "$host" "debug" "" superpowers:systematic-debugging systematic-debugging diagnosing-bugs
   check_stage "$host" "tdd" "" tdd superpowers:test-driven-development test-driven-development
   check_stage "$host" "verify" "" superpowers:verification-before-completion verification-before-completion health
   check_stage "$host" "commit/push" "manual git + gh workflow" github:yeet yeet
