@@ -22,7 +22,7 @@ Examples:
 Minimum workflow:
 
 ```text
-orient -> focused review -> targeted verify -> commit/push -> merge -> post-merge verify -> cleanup decision
+orient -> focused review -> targeted verify -> commit/push -> merge -> post-merge verify -> safe cleanup or checkpoint
 ```
 
 PR review is optional when local review and verification are sufficient.
@@ -42,7 +42,7 @@ Examples:
 Minimum workflow:
 
 ```text
-orient -> review skill -> fix -> verify -> commit/push -> optional PR review -> merge -> post-merge verify -> cleanup decision
+orient -> review skill -> fix -> verify -> commit/push -> optional PR review -> merge -> post-merge verify -> safe cleanup or checkpoint
 ```
 
 Use PR review when the diff is large, the repository already uses PRs, or the user asks for it.

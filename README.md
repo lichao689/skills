@@ -101,7 +101,7 @@ Force symlinks instead of copies:
 
 - GStack: `ship`, `review`, `health`, `land-and-deploy`, `careful`, `guard`
 - Superpowers: `superpowers:verification-before-completion`, `superpowers:receiving-code-review`, `superpowers:systematic-debugging`, `superpowers:finishing-a-development-branch`, `superpowers:test-driven-development`
-- Matt skills: `tdd`, `diagnose`, `grill-me`, `zoom-out`
+- Matt skills: `tdd`, `diagnosing-bugs`
 
 This repository does not auto-install those external packs. Use the checker first:
 
@@ -154,7 +154,7 @@ npx skills@latest add mattpocock/skills -g
 Select the Matt skills and agents you want. If Codex cannot see selected skills after installation, copy or link the selected skill folders from `~/.agents/skills` into `~/.codex/skills`, then verify:
 
 ```bash
-codex debug prompt-input | rg "tdd|diagnose|grill-me|zoom-out"
+codex debug prompt-input | rg "tdd|diagnosing-bugs"
 ```
 
 Claude users can install this repo with `skills.sh` or run `./scripts/link-skills.sh --target claude`, but `solo-ship` dependency checking currently targets Codex only.

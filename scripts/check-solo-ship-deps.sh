@@ -159,9 +159,7 @@ print_group "Superpowers recommended skills" visible \
 echo
 print_group "Matt skills recommended skills" visible \
   tdd \
-  diagnose \
-  grill-me \
-  zoom-out
+  diagnosing-bugs
 
 if [ "$MISSING_ANY" -eq 1 ]; then
   cat <<'GUIDE'
@@ -191,7 +189,7 @@ Matt skills:
 
   If Codex still cannot see selected Matt skills after installation, copy or link the selected
   skill folders from ~/.agents/skills into ~/.codex/skills, then rerun:
-    codex debug prompt-input | rg "tdd|diagnose|grill-me|zoom-out"
+    codex debug prompt-input | rg "tdd|diagnosing-bugs"
 GUIDE
 fi
 
