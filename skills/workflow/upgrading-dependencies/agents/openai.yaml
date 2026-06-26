@@ -1,0 +1,4 @@
+interface:
+  display_name: "Upgrading Dependencies"
+  short_description: "Plan and verify dependency upgrades."
+  default_prompt: "Use $upgrading-dependencies to plan and verify a dependency upgrade."

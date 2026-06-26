@@ -48,6 +48,7 @@ The `setup` skill can repair this repo's local skill installation, but it still 
 
 - [`solo-ship`](./skills/workflow/solo-ship/SKILL.md): Review, fix, commit, push, merge, verify, and clean up solo developer work.
 - [`setup`](./skills/setup/SKILL.md): Install, check, and repair this skills package across Codex and Claude Code. Its first module covers the skills and plugins that `solo-ship` orchestrates.
+- [`upgrading-dependencies`](./skills/workflow/upgrading-dependencies/SKILL.md): Audit, batch, upgrade, verify, and record dependency changes across package managers.
 
 ## Scripts
 
