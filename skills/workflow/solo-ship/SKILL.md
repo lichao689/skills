@@ -50,6 +50,19 @@ Proceed automatically when all are true:
 
 Stop and ask only for Stop Rules, product judgment, credentials, destructive data changes, protected branch policy decisions, unmerged dirty work, or skipping a strict-mode requirement.
 
+## Scope Lock
+
+At invocation, take an entry snapshot of the repository's dirty state and lock the shipping scope to that snapshot.
+
+The locked scope includes:
+
+- files already staged, modified, deleted, renamed, or untracked when the skill begins
+- files the skill itself changes to fix review findings, tests, docs, merge conflicts, or verification fallout for that locked scope
+
+Do not review, fix, stage, commit, merge because of, clean up, or otherwise absorb files that become dirty after the entry snapshot unless they were changed by this skill for the locked scope. Treat later changes from users, tools, background processes, or other agents as concurrent external work to preserve, not as new ship scope.
+
+If later external changes overlap a locked-scope file, alter branch topology, or otherwise prevent a safe commit, merge, or cleanup, stop with a checkpoint that names the conflicting paths or state. Do not expand the ship scope to catch up with concurrent work.
+
 ## Auto Decision Rules
 
 Use these rules when a parameter is `auto`:
@@ -75,9 +88,11 @@ git remote -v
 git worktree list
 git diff --stat
 git diff --name-only
+git diff --cached --name-only
+git ls-files --others --exclude-standard
 ```
 
-Also inspect untracked files before committing or cleaning up. If this is not a git repository, stop and explain the blocker.
+Record these results as the entry snapshot before review, fixes, verification, or staging. Also inspect untracked files before committing or cleaning up. If this is not a git repository, stop and explain the blocker.
 
 Determine:
 
@@ -85,6 +100,7 @@ Determine:
 - base branch, usually `main` or `master`
 - whether the current directory is a worktree
 - dirty, staged, and untracked files
+- locked shipping scope from the entry snapshot
 - whether a remote exists
 - whether a PR already exists
 - likely mode if `mode=auto`
@@ -127,7 +143,7 @@ Host naming differs. Codex plugin skills may be visible with prefixes such as `g
 
 ### 1. Orient
 
-Inspect repository state and select mode. If the working tree contains changes outside the requested scope, protect them. Do not revert or overwrite user changes.
+Inspect repository state, record the entry snapshot, lock the shipping scope, and select mode. If the working tree contains changes outside the requested scope, protect them. Do not revert or overwrite user changes.
 
 Classify every dirty or untracked path before staging:
 
@@ -135,6 +151,8 @@ Classify every dirty or untracked path before staging:
 - unrelated user work to preserve
 - generated/ignored artifact to leave alone
 - ambiguous path that triggers a Stop Rule
+
+During the rest of the run, compare later `git status` and diff checks against the locked scope. Exclude new external dirty paths from review, verification decisions, staging, commits, and cleanup unless this skill created them for the locked scope.
 
 Use explicit path staging for mixed worktrees. Do not use `git add -A` when unrelated changes exist.
 
@@ -240,6 +258,7 @@ When stopping before completion, leave a concise recovery checkpoint in the fina
 Stop and ask or report a blocker when:
 
 - the repository has unrelated dirty changes that would be committed or deleted
+- post-invocation external changes overlap locked-scope files or make the locked scope impossible to isolate
 - the base branch cannot be determined
 - tests fail and the root cause is not understood
 - merge conflicts require product judgment
