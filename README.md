@@ -47,7 +47,7 @@ The `setup` skill can repair this repo's local skill installation, but it still 
 ## Skills
 
 - [`solo-ship`](./skills/workflow/solo-ship/SKILL.md): Review, fix, commit, push, merge, verify, and clean up solo developer work.
-- [`rules-keeper`](./skills/workflow/rules-keeper/SKILL.md): Record durable repository-level rules in root agent instruction files.
+- [`rules-curator`](./skills/workflow/rules-curator/SKILL.md): Curate durable repository rules before writing root agent instruction files.
 - [`setup`](./skills/setup/SKILL.md): Install, check, and repair this skills package across Codex and Claude Code. Its first module covers the skills and plugins that `solo-ship` orchestrates.
 
 ## Scripts
