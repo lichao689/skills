@@ -1,6 +1,6 @@
 ---
 name: solo-ship
-description: Use when the user wants Codex to finish a completed code change or current branch for solo development, especially prompts like ship this, finish the branch, land it, merge it, push it, clean up after merge, or handle review-to-merge closure.
+description: Use when the user wants Codex to finish a completed code change or current branch for solo development, especially prompts like ship this, finish the branch, land it, merge it, push it, clean up after merge, or handle review-to-merge closure. Also use for scope-limited shipping requests such as ship what you changed, ship this session, commit this conversation's changes, only ship this chat, ship current local changes, or ship the current working tree.
 ---
 
 # Solo Ship
@@ -18,7 +18,7 @@ Use $solo-ship to finish the current branch.
 Default parameters:
 
 ```text
-mode=auto pr=auto cleanup=auto merge=auto docs=auto approval=stop-rules-only
+mode=auto scope=auto pr=auto cleanup=auto merge=auto docs=auto approval=stop-rules-only
 ```
 
 Supported parameters:
@@ -26,6 +26,7 @@ Supported parameters:
 | Parameter | Values | Default | Meaning |
 | --- | --- | --- | --- |
 | `mode` | `auto`, `quick`, `standard`, `strict` | `auto` | Risk level and workflow depth |
+| `scope` | `auto`, `session`, `entry`, `explicit` | `auto` | Which dirty files may enter the shipping set |
 | `pr` | `auto`, `true`, `false` | `auto` | Whether to use a GitHub PR review step |
 | `cleanup` | `ask`, `auto`, `skip` | `auto` | Whether to delete branches and worktrees after merge |
 | `merge` | `auto`, `local`, `pr` | `auto` | Merge locally or through a PR |
@@ -50,6 +51,36 @@ Proceed automatically when all are true:
 
 Stop and ask only for Stop Rules, product judgment, credentials, destructive data changes, protected branch policy decisions, unmerged dirty work, or skipping a strict-mode requirement.
 
+## Scope Fence
+
+Use a two-layer Scope Fence. The session fence answers "did this conversation create or claim the work?" The entry fence answers "was it dirty when solo-ship started?" The default shipping set is the intersection of both fences, plus files this skill changes later to fix review findings, tests, docs, merge conflicts, or verification fallout for that set.
+
+### Session Fence
+
+Before relying on `git diff`, identify the session scope from the current conversation:
+
+- files this Codex session created or edited
+- files the user explicitly named as part of this ship request
+- files already staged by this session for the requested work
+- files required to fix review, tests, docs, or merge fallout for those files
+
+Do not infer session scope from Git dirtiness alone. If the conversation has been compacted, resumed, or lacks enough evidence to tell which files this session changed, use `scope=explicit`: stop and ask for a path allowlist instead of absorbing all dirty files.
+
+### Entry Fence
+
+At invocation, take an entry snapshot of staged, modified, deleted, renamed, and untracked files. Do not review, fix, stage, commit, merge because of, clean up, or otherwise absorb files that become dirty after the entry snapshot unless this skill changed them for the fenced shipping set. Treat later changes from users, tools, background processes, or other agents as concurrent external work to preserve, not as new ship scope.
+
+### Scope Modes
+
+| Scope mode | Use when | Shipping set |
+| --- | --- | --- |
+| `session` | The user says "ship what you changed", "this session", "this chat", or similar | Session fence only, then entry-fence out later external changes |
+| `entry` | The user explicitly says to ship all current local changes or the current working tree | Entry snapshot, after classifying unrelated and ambiguous paths |
+| `explicit` | The user names paths, or session evidence is ambiguous | Only the named paths and required fallout fixes |
+| `auto` | Default | Choose `session` for chat/session wording, `entry` for current-worktree wording, and `explicit` when uncertain |
+
+If external changes overlap a fenced file, alter branch topology, or otherwise prevent a safe commit, merge, or cleanup, stop with a checkpoint that names the conflicting paths or state. Do not expand the shipping set to catch up with concurrent work.
+
 ## Auto Decision Rules
 
 Use these rules when a parameter is `auto`:
@@ -57,6 +88,7 @@ Use these rules when a parameter is `auto`:
 | Decision | Automatic choice |
 | --- | --- |
 | `mode` | Start from `references/risk-levels.md`; escalate when review, tests, CI, or touched surfaces reveal more risk |
+| `scope` | Use `session` for "what you changed"/"this session" wording, `entry` for explicit "current working tree/all local changes" wording, and `explicit` when session evidence is ambiguous |
 | `pr` | Use PR review for `strict`, existing PRs, branch protection, required CI, large diffs, or repository policy; otherwise skip for quick/standard work after local review and verification |
 | `merge` | Use PR merge when PR/CI/policy requires it; otherwise local merge is allowed after push and verification |
 | `docs` | Require docs/changelog for user-visible behavior, public API, deployment, or strict-mode changes; otherwise record why docs were skipped |
@@ -75,9 +107,11 @@ git remote -v
 git worktree list
 git diff --stat
 git diff --name-only
+git diff --cached --name-only
+git ls-files --others --exclude-standard
 ```
 
-Also inspect untracked files before committing or cleaning up. If this is not a git repository, stop and explain the blocker.
+Record these results as the entry snapshot before review, fixes, verification, or staging. Also inspect untracked files before committing or cleaning up. If this is not a git repository, stop and explain the blocker.
 
 Determine:
 
@@ -85,6 +119,8 @@ Determine:
 - base branch, usually `main` or `master`
 - whether the current directory is a worktree
 - dirty, staged, and untracked files
+- selected scope mode and the session evidence supporting it
+- fenced shipping scope from the session fence and entry snapshot
 - whether a remote exists
 - whether a PR already exists
 - likely mode if `mode=auto`
@@ -127,14 +163,18 @@ Host naming differs. Codex plugin skills may be visible with prefixes such as `g
 
 ### 1. Orient
 
-Inspect repository state and select mode. If the working tree contains changes outside the requested scope, protect them. Do not revert or overwrite user changes.
+Inspect repository state, record the entry snapshot, select mode, select scope mode, and build the Scope Fence. If the working tree contains changes outside the fenced scope, protect them. Do not revert or overwrite user changes.
 
 Classify every dirty or untracked path before staging:
 
 - in scope for this ship
+- excluded by the session fence
+- excluded by the entry fence as later external work
 - unrelated user work to preserve
 - generated/ignored artifact to leave alone
 - ambiguous path that triggers a Stop Rule
+
+During the rest of the run, compare later `git status` and diff checks against the fenced scope. Exclude new external dirty paths from review, verification decisions, staging, commits, and cleanup unless this skill created them for the fenced scope.
 
 Use explicit path staging for mixed worktrees. Do not use `git add -A` when unrelated changes exist.
 
@@ -240,6 +280,8 @@ When stopping before completion, leave a concise recovery checkpoint in the fina
 Stop and ask or report a blocker when:
 
 - the repository has unrelated dirty changes that would be committed or deleted
+- session scope cannot be reconstructed and the user has not provided an explicit path allowlist
+- post-invocation external changes overlap fenced files or make the fenced scope impossible to isolate
 - the base branch cannot be determined
 - tests fail and the root cause is not understood
 - merge conflicts require product judgment
@@ -252,13 +294,14 @@ Stop and ask or report a blocker when:
 
 Report:
 
-- mode used and whether it was explicit or detected
+- mode and scope used, and whether each was explicit or detected
 - review result and fixes made
 - verification commands and outcomes
 - commit hash and push target, if created
 - merge target and result, if merged
 - post-merge verification result
 - cleanup performed or intentionally skipped
+- files excluded by session or entry fences, if any
 - any checkpoint needed to resume
 
 Keep the final concise, but include unresolved risks.
