@@ -1,4 +1,4 @@
 interface:
   display_name: "Solo Ship"
-  short_description: "Scope-fence, review, ship, verify, and clean up solo dev work"
-  default_prompt: "Use $solo-ship to scope-fence, review, fix, commit, push, merge, verify, and clean up the current branch."
+  short_description: "Scope-fence, reuse valid evidence, review, ship, verify, and clean up solo dev work"
+  default_prompt: "Use $solo-ship to scope-fence, reuse valid evidence, review, fix, commit, push, merge, verify, and clean up the current branch."

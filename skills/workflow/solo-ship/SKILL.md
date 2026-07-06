@@ -18,7 +18,7 @@ Use $solo-ship to finish the current branch.
 Default parameters:
 
 ```text
-mode=auto scope=auto pr=auto cleanup=auto merge=auto docs=auto approval=stop-rules-only
+mode=auto scope=auto evidence=auto pr=auto cleanup=auto merge=auto docs=auto approval=stop-rules-only
 ```
 
 Supported parameters:
@@ -27,6 +27,7 @@ Supported parameters:
 | --- | --- | --- | --- |
 | `mode` | `auto`, `quick`, `standard`, `strict` | `auto` | Risk level and workflow depth |
 | `scope` | `auto`, `session`, `entry`, `explicit` | `auto` | Which dirty files may enter the shipping set |
+| `evidence` | `auto`, `reuse`, `fresh` | `auto` | Whether prior review and verification evidence can replace reruns |
 | `pr` | `auto`, `true`, `false` | `auto` | Whether to use a GitHub PR review step |
 | `cleanup` | `ask`, `auto`, `skip` | `auto` | Whether to delete branches and worktrees after merge |
 | `merge` | `auto`, `local`, `pr` | `auto` | Merge locally or through a PR |
@@ -81,6 +82,26 @@ At invocation, take an entry snapshot of staged, modified, deleted, renamed, and
 
 If external changes overlap a fenced file, alter branch topology, or otherwise prevent a safe commit, merge, or cleanup, stop with a checkpoint that names the conflicting paths or state. Do not expand the shipping set to catch up with concurrent work.
 
+## Prior Evidence Intake
+
+Before review or verification reruns, inspect recent evidence that may already cover the fenced scope:
+
+- progress ledgers such as `.superpowers/sdd/progress.md`
+- review reports, review packages, PR reviews, or code-review verdicts
+- test/lint/build command results recorded in the conversation or repo artifacts
+- browser QA reports, screenshots, or `report.json` files
+- staged-diff checks from the same fenced scope
+
+Classify each evidence item:
+
+| Class | Use when | Action |
+| --- | --- | --- |
+| `reuse` | Same branch, same fenced files, no relevant file changed after the evidence, command target still matches, and verdict passed | Do not rerun; cite the evidence path or command result |
+| `rerun-minimal` | Evidence is mostly current but staging, untracked files, route paths, or final packaging changed | Run the smallest guard/check that closes the gap |
+| `rerun-required` | Scope expanded, relevant files changed after evidence, environment changed, evidence failed/blocked, or evidence lacks the files being shipped | Rerun the relevant review or verification |
+
+`evidence=fresh` skips reuse and reruns. `evidence=reuse` still cannot reuse stale, failed, blocked, or out-of-scope evidence. Never reuse browser QA if the route, user, case, base URL, or target page set differs from the ship target.
+
 ## Auto Decision Rules
 
 Use these rules when a parameter is `auto`:
@@ -89,6 +110,7 @@ Use these rules when a parameter is `auto`:
 | --- | --- |
 | `mode` | Start from `references/risk-levels.md`; escalate when review, tests, CI, or touched surfaces reveal more risk |
 | `scope` | Use `session` for "what you changed"/"this session" wording, `entry` for explicit "current working tree/all local changes" wording, and `explicit` when session evidence is ambiguous |
+| `evidence` | Reuse only when prior evidence is current for the fenced scope; otherwise rerun the smallest verification that closes the gap |
 | `pr` | Use PR review for `strict`, existing PRs, branch protection, required CI, large diffs, or repository policy; otherwise skip for quick/standard work after local review and verification |
 | `merge` | Use PR merge when PR/CI/policy requires it; otherwise local merge is allowed after push and verification |
 | `docs` | Require docs/changelog for user-visible behavior, public API, deployment, or strict-mode changes; otherwise record why docs were skipped |
@@ -121,6 +143,7 @@ Determine:
 - dirty, staged, and untracked files
 - selected scope mode and the session evidence supporting it
 - fenced shipping scope from the session fence and entry snapshot
+- selected evidence mode and reusable evidence candidates
 - whether a remote exists
 - whether a PR already exists
 - likely mode if `mode=auto`
@@ -178,13 +201,25 @@ During the rest of the run, compare later `git status` and diff checks against t
 
 Use explicit path staging for mixed worktrees. Do not use `git add -A` when unrelated changes exist.
 
-### 2. Review
+### 2. Intake Prior Evidence
 
-Run a code-review style pass before committing. Prioritize logic correctness, edge cases, old behavior regressions, test gaps, documentation gaps, and whether the commit message can explain why the change exists.
+Build a compact evidence table before rerunning expensive work:
 
-In `quick` mode, a focused diff review is enough. In `standard` and `strict` modes, use the dedicated review skill when available.
+- `review`: prior review verdicts and unresolved findings
+- `tests`: exact commands, pass/fail status, and covered paths
+- `lint/build`: exact commands and pass/fail status
+- `browser`: report path, user, case, base URL, target paths, blocked flag, console errors
+- `packaging`: whether untracked files and staged files were included in review evidence
 
-### 3. Fix
+For each item, mark `reuse`, `rerun-minimal`, or `rerun-required`. Explain only the items that are reused or rerun; do not paste long logs. If evidence is reused, the completion criterion is a current file/scope check proving it still covers the fenced shipping set.
+
+### 3. Review
+
+Run a code-review style pass before committing unless a current prior review is classified `reuse`. Prioritize logic correctness, edge cases, old behavior regressions, test gaps, documentation gaps, and whether the commit message can explain why the change exists.
+
+In `quick` mode, a focused diff review is enough. In `standard` and `strict` modes, use the dedicated review skill when available. If a prior review is reused, still inspect the staged diff boundaries before committing.
+
+### 4. Fix
 
 Address review findings and failing tests. Re-run the smallest meaningful verification after each fix. If a failure is unclear, switch to systematic debugging rather than guessing.
 
@@ -196,19 +231,21 @@ Loop until one of these is true:
 
 After nontrivial fixes, re-check the diff before committing.
 
-### 4. Verify Before Commit
+### 5. Verify Before Commit
 
-Run project-appropriate tests, lint, type checks, builds, or manual checks. Prefer the repository's documented commands. If no test command is discoverable, say so and perform the strongest reasonable local check.
+Run project-appropriate tests, lint, type checks, builds, or manual checks unless current prior evidence covers that exact risk. Prefer the repository's documented commands. If no test command is discoverable, say so and perform the strongest reasonable local check.
+
+Use `rerun-minimal` for cheap boundary checks that should almost never be skipped: `git diff --check`, staged diff/name checks, and any guard test that protects the shipped contract. Use `rerun-required` for any relevant source file changed after the last passing evidence.
 
 Do not commit until verification has either passed or the remaining risk is explicitly reported.
 
-### 5. Commit and Push
+### 6. Commit and Push
 
 Use a commit message that states why the change was made, not only what changed. Keep unrelated changes out of the commit. Push after the commit unless the user asked for a local-only workflow.
 
 Before committing, run `git diff --cached --stat` and `git diff --cached --name-only`; the staged set must match the reviewed shipping scope. If unrelated changes are already staged, unstage or stop before committing.
 
-### 6. Optional PR Review
+### 7. Optional PR Review
 
 Use PR review when:
 
@@ -220,17 +257,17 @@ Use PR review when:
 
 If `pr=auto`, skip PR review for clearly quick work after local review and verification.
 
-### 7. Merge
+### 8. Merge
 
 Merge only after review and verification are complete. Use `ship` for the normal case. Use `land-and-deploy` when deployment, canary checks, or live service verification matter.
 
 Before claiming the merge is final, fetch and re-check topology against the remote base. If `origin/main` or `origin/master` advanced while shipping, resolve the new topology and repeat the required verification.
 
-### 8. Post-Merge Verify
+### 9. Post-Merge Verify
 
 After merge, switch to the base branch, update it, and re-run the key verification command(s). This is mandatory unless the user explicitly asks to stop before merge.
 
-### 9. Cleanup
+### 10. Cleanup
 
 Cleanup is allowed only after post-merge verification succeeds or the user explicitly accepts the residual risk.
 
@@ -284,6 +321,7 @@ Stop and ask or report a blocker when:
 - post-invocation external changes overlap fenced files or make the fenced scope impossible to isolate
 - the base branch cannot be determined
 - tests fail and the root cause is not understood
+- `evidence=reuse` was requested but the prior evidence is stale, blocked, failed, or cannot be tied to the fenced scope
 - merge conflicts require product judgment
 - branch or worktree cleanup would delete unmerged or dirty work
 - `strict` mode would skip PR, CI, or docs without explicit user approval
@@ -295,6 +333,7 @@ Stop and ask or report a blocker when:
 Report:
 
 - mode and scope used, and whether each was explicit or detected
+- evidence mode used, what was reused, and what was rerun
 - review result and fixes made
 - verification commands and outcomes
 - commit hash and push target, if created
