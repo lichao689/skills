@@ -23,6 +23,7 @@ cd ~/Developer/lichao689-skills
 ## 技能
 
 - [`solo-ship`](./skills/workflow/solo-ship/SKILL.md)：完成个人开发收尾流程，包括 review、修复、测试、提交、推送、合并、验证和清理。
+- [`code-simplifier`](./skills/workflow/code-simplifier/SKILL.md)：对最近改动过的代码做行为不变的简化与清理，去掉多余防卫、明显废话注释和不必要抽象，并对齐仓库规范。
 - [`rules-curator`](./skills/workflow/rules-curator/SKILL.md)：在写入根级 agent 规则文件前，整理和判断哪些规则值得长期保留。
 - [`setup`](./skills/setup/SKILL.md)：安装、检查和修复这个技能包在 Codex 与 Claude Code 中的配置。
 
