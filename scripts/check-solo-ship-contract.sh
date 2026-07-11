@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export LC_ALL=C
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL="$ROOT/skills/workflow/solo-ship/SKILL.md"
@@ -97,10 +98,21 @@ green_pass_count="$(grep -c '^GREEN_RESULT: PASS$' "$EVALUATIONS")"
   exit 1
 }
 
-if grep -Fi 'current-skill' "$EVALUATIONS" >/dev/null; then
-  echo "evaluation artifact must label the RED source as the pre-refactor skill" >&2
-  exit 1
-fi
+set +e
+grep -F 'current-skill' "$EVALUATIONS" >/dev/null
+absence_status=$?
+set -e
+case "$absence_status" in
+  0)
+    echo "evaluation artifact must label the RED source as the pre-refactor skill" >&2
+    exit 1
+    ;;
+  1) ;;
+  *)
+    echo "contract check failed while scanning evaluation terminology (grep exit $absence_status)" >&2
+    exit 1
+    ;;
+esac
 
 red_end="$(grep -nF 'Run identifier: `/root/red_orchestrator' "$EVALUATIONS" | cut -d: -f1)"
 green_start="$(grep -nF '## GREEN observations' "$EVALUATIONS" | cut -d: -f1)"
