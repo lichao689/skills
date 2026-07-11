@@ -8,16 +8,18 @@ Derive ownership from the current conversation, user-named paths, task commits, 
 
 ## Entry Fence
 
-The Entry Fence is content-recoverable, not a path list. Before changing anything, create a Solo-Ship-owned snapshot directory outside the mutable worktree or inside an owned integration worktree, then record:
+The Entry Fence is content-recoverable, not a path list. Before changing anything, create a Solo-Ship-owned snapshot resource in the secure host temporary directory, outside every repository and normal or integration worktree. Restrict it to the current user: POSIX directory mode `0700` and file mode `0600`, or the host's equivalent current-user-only ACL. Never place a snapshot beneath a worktree tree. Then record:
 
 - branch, upstream, `HEAD`, worktree list, stash list, staged/unstaged/deleted/renamed status;
 - tracked staged content as `git diff --cached --binary --full-index`, and tracked unstaged content as `git diff --binary --full-index`;
 - every session-owned untracked file copied with its relative path into the owned snapshot (binary files included);
-- a manifest containing each path, ownership class, source state, snapshot location, byte size, and a cryptographic content hash; also hash both patch files.
+- a manifest containing each path, ownership class, source state, absolute snapshot path, byte size, and a cryptographic content hash; also record the snapshot directory's absolute path and hash both patch files.
 
-Restrict patches and copied files to provably owned paths when the Session Fence is narrower than the dirty tree. Do not place the snapshot under a directory that broad staging can include. Verify the patch and manifest hashes before packaging and retain them until merge and post-deploy verification complete.
+Restrict patches and copied files to provably owned paths when the Session Fence is narrower than the dirty tree. Verify permissions or ACLs plus the patch and manifest hashes before packaging. Retain the resource only until merge and post-deploy verification complete, then securely delete it and report the deleted absolute path.
 
 A later change not produced by Solo Ship is external concurrent work and remains excluded. Detect post-entry overlap by comparing current content with the stored hashes and patches. Reconstruct the shipping version from the pinned `HEAD`, binary patches, and copied untracked snapshot in the owned integration worktree; never try to recover entry content from a later path-only status listing.
+
+If an objective blocker requires resumption, preserve the snapshot only while it is necessary for recovery. The checkpoint must report its absolute path, likely sensitivity, current-user-only protection, and exact cleanup instruction. On resume, delete the snapshot as soon as recovery and post-deploy verification complete.
 
 ## Shipping Set
 

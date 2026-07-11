@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL="$ROOT/skills/workflow/solo-ship/SKILL.md"
 EVALUATIONS="$ROOT/tests/solo-ship-evaluations.md"
+SCOPE_FENCE="$(dirname "$SKILL")/references/scope-fence.md"
 
 required_files=(
   references/risk-levels.md
@@ -48,6 +49,10 @@ grep -F 'host or repository rules prohibit subagents' "$SKILL" >/dev/null
 grep -F 'Standards axis' "$SKILL" >/dev/null
 grep -F 'Spec axis' "$SKILL" >/dev/null
 grep -F 'deployment: not applicable' "$SKILL" >/dev/null
+grep -F 'secure host temporary directory' "$SCOPE_FENCE" >/dev/null
+grep -F '0700' "$SCOPE_FENCE" >/dev/null
+grep -F '0600' "$SCOPE_FENCE" >/dev/null
+grep -F 'snapshot resource' "$SKILL" >/dev/null
 
 stage_count="$(grep -Ec '^### [1-8]\. ' "$SKILL")"
 [ "$stage_count" -eq 8 ] || {
@@ -89,6 +94,18 @@ done
 green_pass_count="$(grep -c '^GREEN_RESULT: PASS$' "$EVALUATIONS")"
 [ "$green_pass_count" -eq 3 ] || {
   echo "expected exactly 3 GREEN_RESULT: PASS records, found $green_pass_count" >&2
+  exit 1
+}
+
+if grep -Fi 'current-skill' "$EVALUATIONS" >/dev/null; then
+  echo "evaluation artifact must label the RED source as the pre-refactor skill" >&2
+  exit 1
+fi
+
+red_end="$(grep -nF 'Run identifier: `/root/red_orchestrator' "$EVALUATIONS" | cut -d: -f1)"
+green_start="$(grep -nF '## GREEN observations' "$EVALUATIONS" | cut -d: -f1)"
+[ -n "$red_end" ] && [ -n "$green_start" ] && [ "$red_end" -lt "$green_start" ] || {
+  echo "complete RED E1-E3 block must precede the GREEN block" >&2
   exit 1
 }
 

@@ -122,10 +122,66 @@ list_repo_files() {
   done
 }
 
-github_route_required() {
+selected_push_remote() {
   command -v git >/dev/null 2>&1 || return 1
-  git -C "$PROJECT_ROOT" remote -v 2>/dev/null |
+  local branch remote
+  branch="$(git -C "$PROJECT_ROOT" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  remote=""
+  if [ -n "$branch" ]; then
+    remote="$(git -C "$PROJECT_ROOT" config --get "branch.$branch.pushRemote" 2>/dev/null || true)"
+  fi
+  [ -n "$remote" ] || remote="$(git -C "$PROJECT_ROOT" config --get remote.pushDefault 2>/dev/null || true)"
+  if [ -z "$remote" ] && [ -n "$branch" ]; then
+    remote="$(git -C "$PROJECT_ROOT" config --get "branch.$branch.remote" 2>/dev/null || true)"
+  fi
+  if [ -z "$remote" ] && git -C "$PROJECT_ROOT" remote get-url origin >/dev/null 2>&1; then
+    remote=origin
+  fi
+  [ -n "$remote" ] && [ "$remote" != "." ] || return 1
+  printf '%s\n' "$remote"
+}
+
+selected_remote_is_github() {
+  [ -n "$SELECTED_PUSH_REMOTE" ] || return 1
+  git -C "$PROJECT_ROOT" remote get-url --push "$SELECTED_PUSH_REMOTE" 2>/dev/null |
     grep -Eiq '(^|[/:.@-])github([.-]|\.com|$)'
+}
+
+policy_requires_github_pr() {
+  local configured relative lower absolute
+  configured="$(git -C "$PROJECT_ROOT" config --get solo-ship.prRoute 2>/dev/null || true)"
+  [ "$configured" = "github-pr" ] && return 0
+
+  while IFS= read -r relative; do
+    lower="$(printf '%s' "$relative" | tr '[:upper:]' '[:lower:]')"
+    case "$lower" in
+      agents.md|*/agents.md|contributing.md|*/contributing.md|readme.md|*/readme.md|docs/*|.github/rulesets/*)
+        absolute="$PROJECT_ROOT/$relative"
+        grep -Eiq '(pull request|PR)[[:space:]]+(is[[:space:]]+)?(required|mandatory)|must[[:space:]]+(use|open|create)[[:space:]]+(a[[:space:]]+)?(pull request|PR)|required_pull_request' "$absolute" 2>/dev/null && return 0
+        ;;
+    esac
+  done <"$REPO_FILES"
+  return 1
+}
+
+github_pr_route_evidenced() {
+  case "${SOLO_SHIP_PR_ROUTE:-auto}" in
+    github-pr) return 0 ;;
+    direct|none) return 1 ;;
+    auto|'') ;;
+    *)
+      echo "error: unsupported SOLO_SHIP_PR_ROUTE=${SOLO_SHIP_PR_ROUTE}" >&2
+      return 2
+      ;;
+  esac
+
+  policy_requires_github_pr && return 0
+  if command -v gh >/dev/null 2>&1 &&
+    git -C "$PROJECT_ROOT" symbolic-ref --quiet HEAD >/dev/null 2>&1 &&
+    (cd "$PROJECT_ROOT" && GH_PAGER=cat gh pr view --json number >/dev/null 2>&1); then
+    return 0
+  fi
+  return 1
 }
 
 deployment_detected() {
@@ -201,11 +257,11 @@ check_host() {
   print_cli git
   if command -v gh >/dev/null 2>&1; then
     printf '  CLI    %-24s found\n' "gh:"
-  elif [ "$GITHUB_ROUTE_REQUIRED" -eq 1 ]; then
+  elif [ "$GITHUB_PR_ROUTE_REQUIRED" -eq 1 ]; then
     printf '  CLI    %-24s missing (required by GitHub remote/PR route)\n' "gh:"
     MISSING_GH=1
   else
-    printf '  CLI    %-24s unavailable capability (not required for this non-GitHub/no-remote route)\n' "gh:"
+    printf '  CLI    %-24s unavailable capability (selected route does not require GitHub PR)\n' "gh:"
   fi
   print_repo_tools
 
@@ -239,9 +295,16 @@ GUIDE
 
 REPO_FILES="$TMP_DIR/repo-files.txt"
 list_repo_files >"$REPO_FILES"
-GITHUB_ROUTE_REQUIRED=0
-if github_route_required; then
-  GITHUB_ROUTE_REQUIRED=1
+SELECTED_PUSH_REMOTE="$(selected_push_remote || true)"
+GITHUB_PR_ROUTE_REQUIRED=0
+if selected_remote_is_github; then
+  pr_evidence_status=0
+  github_pr_route_evidenced || pr_evidence_status=$?
+  if [ "$pr_evidence_status" -eq 0 ]; then
+    GITHUB_PR_ROUTE_REQUIRED=1
+  elif [ "$pr_evidence_status" -eq 2 ]; then
+    exit 1
+  fi
 fi
 
 case "$TARGET" in

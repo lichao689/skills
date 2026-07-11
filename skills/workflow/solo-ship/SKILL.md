@@ -87,15 +87,15 @@ Completion: when a deployment target exists, target user paths and critical heal
 
 ### 8. Cleanup and report
 
-Apply `references/git-topology-and-cleanup.md`. Remove only owned, clean, merged local worktrees and branches. Preserve remote branches by default, preserve every stash, and leave excluded or concurrent changes untouched. Produce the report below.
+Apply `references/git-topology-and-cleanup.md`. Remove only owned, clean, merged local worktrees and branches. Preserve remote branches by default, preserve every stash, and leave excluded or concurrent changes untouched. After recovery is no longer needed, delete the secure Entry Fence snapshot resource described in `references/scope-fence.md` and report its absolute path and deletion result. Produce the report below.
 
-Completion: every deletion target passes ownership, cleanliness, and merged checks; the final report lists deployment, acceptance, commits, merge, cleanup, and excluded files.
+Completion: every deletion target passes ownership, cleanliness, and merged checks; the snapshot resource is deleted after post-deploy verification or explicitly preserved in an objective-blocker checkpoint; the final report lists deployment, acceptance, commits, merge, snapshot cleanup, and excluded files.
 
 ## Objective Blockers
 
 Stop only after exhausting safe in-scope alternatives when one external condition prevents progress: unavailable credentials, license, token, or protected-branch permission; persistently unavailable CI, deployment platform, or target service after bounded retries; deployment evidence exists but full investigation still leaves the target ambiguous, inaccessible, or unauthorized; an unauthorized irreversible data operation; an overlapping external edit that cannot be isolated without overwriting others; or incompatible business intent that specifications, tests, and current product facts cannot resolve. When full investigation positively proves that the repository has no deployment entry or runtime target, record `deployment: not applicable` and continue through post-merge verification; absence of deployment is not a blocker.
 
-Do not present a routine option menu. Leave one recovery checkpoint containing branch, base, latest commit, remote and PR state, last passing verification, blocker evidence, and the single external condition needed to resume.
+Do not present a routine option menu. Leave one recovery checkpoint containing branch, base, latest commit, remote and PR state, last passing verification, blocker evidence, the single external condition needed to resume, and any preserved snapshot's absolute path, sensitivity, current-user protection, and cleanup instruction.
 
 ## Final Report
 
