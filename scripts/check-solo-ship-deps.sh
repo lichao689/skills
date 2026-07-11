@@ -44,30 +44,38 @@ has_visible_skill() {
   [ -d "$HOME/.codex/skills/$skill" ] || [ -d "$HOME/.agents/skills/$skill" ]
 }
 
-MISSING_ANY=0
+MISSING_LOCAL=0
+MISSING_MATT=0
+MISSING_GIT=0
+MISSING_GH=0
 print_skill() {
   local label="$1"
   local skill="$2"
+  local kind="$3"
 
   if has_visible_skill "$skill"; then
     printf 'Skill: %-28s found (%s)\n' "$label" "$skill"
   else
     printf 'Skill: %-28s missing (%s)\n' "$label" "$skill"
-    MISSING_ANY=1
+    if [ "$kind" = "local" ]; then
+      MISSING_LOCAL=1
+    else
+      MISSING_MATT=1
+    fi
   fi
 }
 
 print_cli() {
   local command_name="$1"
-  local required="$2"
 
   if command -v "$command_name" >/dev/null 2>&1; then
     printf 'CLI:   %-28s found\n' "$command_name"
   else
     printf 'CLI:   %-28s missing\n' "$command_name"
-    if [ "$required" = "required" ]; then
-      MISSING_ANY=1
-    fi
+    case "$command_name" in
+      git) MISSING_GIT=1 ;;
+      gh) MISSING_GH=1 ;;
+    esac
   fi
 }
 
@@ -79,14 +87,14 @@ else
 fi
 echo
 
-print_skill "orchestrator" solo-ship
-print_skill "Matt review leaf" code-review
-print_skill "Matt failure leaf" diagnosing-bugs
-print_skill "Matt conflict leaf" resolving-merge-conflicts
+print_skill "orchestrator" solo-ship local
+print_skill "Matt review leaf" code-review matt
+print_skill "Matt failure leaf" diagnosing-bugs matt
+print_skill "Matt conflict leaf" resolving-merge-conflicts matt
 
 echo
-print_cli git required
-print_cli gh required
+print_cli git
+print_cli gh
 
 if [ -f package.json ] || [ -f pyproject.toml ] || [ -f Makefile ] || [ -d tests ]; then
   echo "Repo:  test entry points             detected"
@@ -106,20 +114,39 @@ else
   echo "Repo:  deployment entry points       not detected"
 fi
 
-if [ "$MISSING_ANY" -eq 1 ]; then
+if [ "$MISSING_LOCAL" -eq 1 ] || [ "$MISSING_MATT" -eq 1 ] || [ "$MISSING_GIT" -eq 1 ] || [ "$MISSING_GH" -eq 1 ]; then
+  printf '\nRepair guidance\n'
+fi
+
+if [ "$MISSING_LOCAL" -eq 1 ]; then
   cat <<'GUIDE'
 
-Repair guidance
-
-This script is read-only and does not install external skills or tools.
-
-Matt leaf skills:
-  npx skills@latest add mattpocock/skills -g
-
-Install Git or GitHub CLI through the host package manager when its CLI status is missing.
+Local solo-ship skill:
+  scripts/setup-solo-ship.sh --target codex --install-local
 GUIDE
 fi
 
-if [ "$STRICT" -eq 1 ] && [ "$MISSING_ANY" -eq 1 ]; then
+if [ "$MISSING_MATT" -eq 1 ]; then
+  cat <<'GUIDE'
+Matt leaf skills:
+  npx skills@latest add mattpocock/skills -g
+GUIDE
+fi
+
+if [ "$MISSING_GIT" -eq 1 ]; then
+  cat <<'GUIDE'
+Git CLI:
+  Install Git with the host package manager, then rerun: scripts/check-solo-ship-deps.sh
+GUIDE
+fi
+
+if [ "$MISSING_GH" -eq 1 ]; then
+  cat <<'GUIDE'
+GitHub CLI:
+  Install GitHub CLI with the host package manager, then rerun: scripts/check-solo-ship-deps.sh
+GUIDE
+fi
+
+if [ "$STRICT" -eq 1 ] && { [ "$MISSING_LOCAL" -eq 1 ] || [ "$MISSING_MATT" -eq 1 ] || [ "$MISSING_GIT" -eq 1 ] || [ "$MISSING_GH" -eq 1 ]; }; then
   exit 1
 fi

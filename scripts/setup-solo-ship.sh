@@ -79,12 +79,17 @@ print_skill() {
   local host="$1"
   local label="$2"
   local skill="$3"
+  local kind="$4"
 
   if has_skill "$host" "$skill"; then
     printf '  skill  %-24s found (%s)\n' "$label:" "$skill"
   else
     printf '  skill  %-24s missing (%s)\n' "$label:" "$skill"
-    MISSING_ANY=1
+    if [ "$kind" = "local" ]; then
+      MISSING_LOCAL=1
+    else
+      MISSING_MATT=1
+    fi
   fi
 }
 
@@ -95,7 +100,10 @@ print_cli() {
     printf '  CLI    %-24s found\n' "$name:"
   else
     printf '  CLI    %-24s missing\n' "$name:"
-    MISSING_ANY=1
+    case "$name" in
+      git) MISSING_GIT=1 ;;
+      gh) MISSING_GH=1 ;;
+    esac
   fi
 }
 
@@ -121,7 +129,10 @@ print_repo_tools() {
 
 check_host() {
   local host="$1"
-  MISSING_ANY=0
+  MISSING_LOCAL=0
+  MISSING_MATT=0
+  MISSING_GIT=0
+  MISSING_GH=0
 
   echo "Solo Ship setup check ($host)"
   if [ "$host" = "codex" ] && [ "$CODEX_PROMPT_AVAILABLE" -eq 1 ]; then
@@ -133,31 +144,38 @@ check_host() {
   fi
   echo
 
-  print_skill "$host" "orchestrator" solo-ship
-  print_skill "$host" "Matt review leaf" code-review
-  print_skill "$host" "Matt failure leaf" diagnosing-bugs
-  print_skill "$host" "Matt conflict leaf" resolving-merge-conflicts
+  print_skill "$host" "orchestrator" solo-ship local
+  print_skill "$host" "Matt review leaf" code-review matt
+  print_skill "$host" "Matt failure leaf" diagnosing-bugs matt
+  print_skill "$host" "Matt conflict leaf" resolving-merge-conflicts matt
   print_cli git
   print_cli gh
   print_repo_tools
 
-  if [ "$MISSING_ANY" -eq 1 ]; then
+  if [ "$MISSING_LOCAL" -eq 1 ] || [ "$MISSING_MATT" -eq 1 ] || [ "$MISSING_GIT" -eq 1 ] || [ "$MISSING_GH" -eq 1 ]; then
+    printf '\nRepair guidance\n'
+  fi
+
+  if [ "$MISSING_LOCAL" -eq 1 ]; then
+    printf '\nLocal solo-ship skill:\n  scripts/setup-solo-ship.sh --target %s --install-local\n' "$host"
+  fi
+
+  if [ "$MISSING_MATT" -eq 1 ]; then
     cat <<'GUIDE'
-
-Repair guidance
-
-Local solo-ship skill:
-  scripts/setup-solo-ship.sh --target codex --install-local
-  scripts/setup-solo-ship.sh --target claude --install-local
-
 Matt leaf skills:
   npx skills@latest add mattpocock/skills -g
-
-Install Git or GitHub CLI through the host package manager when its CLI status is missing.
 GUIDE
   fi
 
-  if [ "$STRICT" -eq 1 ] && [ "$MISSING_ANY" -eq 1 ]; then
+  if [ "$MISSING_GIT" -eq 1 ]; then
+    printf 'Git CLI:\n  Install Git with the host package manager, then rerun: scripts/setup-solo-ship.sh --target %s\n' "$host"
+  fi
+
+  if [ "$MISSING_GH" -eq 1 ]; then
+    printf 'GitHub CLI:\n  Install GitHub CLI with the host package manager, then rerun: scripts/setup-solo-ship.sh --target %s\n' "$host"
+  fi
+
+  if [ "$STRICT" -eq 1 ] && { [ "$MISSING_LOCAL" -eq 1 ] || [ "$MISSING_MATT" -eq 1 ] || [ "$MISSING_GIT" -eq 1 ] || [ "$MISSING_GH" -eq 1 ]; }; then
     return 1
   fi
 }
@@ -165,8 +183,13 @@ GUIDE
 case "$TARGET" in
   codex|claude) check_host "$TARGET" ;;
   all)
-    check_host codex
+    codex_status=0
+    check_host codex || codex_status=$?
     echo
-    check_host claude
+    claude_status=0
+    check_host claude || claude_status=$?
+    if [ "$codex_status" -ne 0 ] || [ "$claude_status" -ne 0 ]; then
+      exit 1
+    fi
     ;;
 esac
