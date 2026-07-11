@@ -8,7 +8,16 @@ Derive ownership from the current conversation, user-named paths, task commits, 
 
 ## Entry Fence
 
-At invocation record staged, unstaged, deleted, renamed, untracked, stash, branch, upstream, and worktree state. A later change not produced by Solo Ship is external concurrent work and remains excluded.
+The Entry Fence is content-recoverable, not a path list. Before changing anything, create a Solo-Ship-owned snapshot directory outside the mutable worktree or inside an owned integration worktree, then record:
+
+- branch, upstream, `HEAD`, worktree list, stash list, staged/unstaged/deleted/renamed status;
+- tracked staged content as `git diff --cached --binary --full-index`, and tracked unstaged content as `git diff --binary --full-index`;
+- every session-owned untracked file copied with its relative path into the owned snapshot (binary files included);
+- a manifest containing each path, ownership class, source state, snapshot location, byte size, and a cryptographic content hash; also hash both patch files.
+
+Restrict patches and copied files to provably owned paths when the Session Fence is narrower than the dirty tree. Do not place the snapshot under a directory that broad staging can include. Verify the patch and manifest hashes before packaging and retain them until merge and post-deploy verification complete.
+
+A later change not produced by Solo Ship is external concurrent work and remains excluded. Detect post-entry overlap by comparing current content with the stored hashes and patches. Reconstruct the shipping version from the pinned `HEAD`, binary patches, and copied untracked snapshot in the owned integration worktree; never try to recover entry content from a later path-only status listing.
 
 ## Shipping Set
 
@@ -37,4 +46,4 @@ No scope mode absorbs edits that appear after the Entry Fence unless Solo Ship i
 
 ## Isolation Priority
 
-When the current worktree cannot safely package the shipping set, prefer a Solo-Ship-owned integration worktree created from the pinned clean base. Before creating or using any linked or owned integration worktree, read `git-topology-and-cleanup.md`. Reconstruct only proven owned commits or patches there, then review and verify the isolated tree. Preserve overlapping user edits in their original worktree. If owned hunks cannot be isolated without guessing or overwriting external content, record the path as an objective blocker.
+When the current worktree cannot safely package the shipping set, prefer a Solo-Ship-owned integration worktree created from the pinned clean base. Before creating or using any linked or owned integration worktree, read `git-topology-and-cleanup.md`. Reconstruct only proven owned commits, verified binary patches, and copied owned-untracked snapshots there, then compare the reconstructed tree with the hash manifest before review and verification. Preserve overlapping user edits in their original worktree. If owned hunks cannot be isolated without guessing or overwriting external content, record the path as an objective blocker.

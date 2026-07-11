@@ -11,12 +11,13 @@ The external Matt skill pack and CLI tools are never installed by this script.
 Options:
   --target        Host surface to check. Default: codex.
   --install-local Install this repo's bundled skills into the selected host(s) before checking.
-  --strict        Exit 1 when solo-ship, a Matt leaf skill, Git, or GitHub CLI is missing.
+  --strict        Exit 1 when solo-ship, a Matt leaf skill, Git, or route-required GitHub CLI is missing.
   -h,--help       Show this help text.
 USAGE
 }
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD")"
 TARGET="codex"
 INSTALL_LOCAL=0
 STRICT=0
@@ -100,30 +101,79 @@ print_cli() {
     printf '  CLI    %-24s found\n' "$name:"
   else
     printf '  CLI    %-24s missing\n' "$name:"
-    case "$name" in
-      git) MISSING_GIT=1 ;;
-      gh) MISSING_GH=1 ;;
-    esac
+    MISSING_GIT=1
   fi
 }
 
+list_repo_files() {
+  if git -C "$PROJECT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "$PROJECT_ROOT" ls-files -co --exclude-standard
+    return
+  fi
+
+  local candidate
+  for candidate in \
+    "$PROJECT_ROOT"/* \
+    "$PROJECT_ROOT"/.github/workflows/* \
+    "$PROJECT_ROOT"/docs/* \
+    "$PROJECT_ROOT"/scripts/*; do
+    [ -f "$candidate" ] || continue
+    printf '%s\n' "${candidate#"$PROJECT_ROOT"/}"
+  done
+}
+
+github_route_required() {
+  command -v git >/dev/null 2>&1 || return 1
+  git -C "$PROJECT_ROOT" remote -v 2>/dev/null |
+    grep -Eiq '(^|[/:.@-])github([.-]|\.com|$)'
+}
+
+deployment_detected() {
+  local relative lower absolute
+  while IFS= read -r relative; do
+    [ -n "$relative" ] || continue
+    lower="$(printf '%s' "$relative" | tr '[:upper:]' '[:lower:]')"
+    absolute="$PROJECT_ROOT/$relative"
+
+    case "$lower" in
+      *deploy*|*release*|dockerfile|*/dockerfile|compose.yml|*/compose.yml|docker-compose.yml|*/docker-compose.yml|fly.toml|*/fly.toml|vercel.json|*/vercel.json|netlify.toml|*/netlify.toml|render.yaml|*/render.yaml|railway.json|*/railway.json|procfile|*/procfile)
+        return 0
+        ;;
+    esac
+
+    case "$lower" in
+      .github/workflows/*)
+        grep -Eiq '(^|[^[:alnum:]_])(deploy|release|publish)([^[:alnum:]_]|$)|environment:|workflow_dispatch:' "$absolute" 2>/dev/null && return 0
+        ;;
+      package.json|*/package.json|pyproject.toml|*/pyproject.toml|makefile|*/makefile)
+        grep -Eiq '(^|["[:space:]])(deploy|release|publish)(["=:[:space:]]|$)' "$absolute" 2>/dev/null && return 0
+        ;;
+      readme|readme.*|*/readme|*/readme.*|docs/*)
+        grep -Eiq '(^|[[:space:]#])(deployment|deploy|release|publish)([[:space:]:#`]|$)' "$absolute" 2>/dev/null && return 0
+        ;;
+    esac
+  done <"$REPO_FILES"
+  return 1
+}
+
 print_repo_tools() {
-  if [ -f "$REPO/package.json" ] || [ -f "$REPO/pyproject.toml" ] || [ -f "$REPO/Makefile" ] || [ -d "$REPO/tests" ]; then
+  if [ -f "$PROJECT_ROOT/package.json" ] || [ -f "$PROJECT_ROOT/pyproject.toml" ] || [ -f "$PROJECT_ROOT/Makefile" ] || [ -d "$PROJECT_ROOT/tests" ]; then
     echo "  repo   test entry points:       detected"
   else
-    echo "  repo   test entry points:       not detected"
+    echo "  repo   test entry points:       not detected by heuristic"
   fi
 
-  if [ -d "$REPO/.github/workflows" ]; then
+  if grep -Eq '^(\.github/workflows/|\.gitlab-ci\.yml$|azure-pipelines\.yml$|\.circleci/)' "$REPO_FILES"; then
     echo "  repo   CI configuration:        detected"
   else
-    echo "  repo   CI configuration:        not detected"
+    echo "  repo   CI configuration:        not detected by heuristic"
   fi
 
-  if find "$REPO" -maxdepth 3 -type f \( -iname '*deploy*' -o -iname 'Dockerfile' -o -iname 'compose.yml' -o -iname 'docker-compose.yml' \) -print -quit 2>/dev/null | grep . >/dev/null 2>&1; then
+  if deployment_detected; then
     echo "  repo   deployment entry points: detected"
   else
-    echo "  repo   deployment entry points: not detected"
+    echo "  repo   deployment entry points: not detected by heuristic"
+    echo "  note   heuristic absence is not proof that deployment is not applicable"
   fi
 }
 
@@ -149,7 +199,14 @@ check_host() {
   print_skill "$host" "Matt failure leaf" diagnosing-bugs matt
   print_skill "$host" "Matt conflict leaf" resolving-merge-conflicts matt
   print_cli git
-  print_cli gh
+  if command -v gh >/dev/null 2>&1; then
+    printf '  CLI    %-24s found\n' "gh:"
+  elif [ "$GITHUB_ROUTE_REQUIRED" -eq 1 ]; then
+    printf '  CLI    %-24s missing (required by GitHub remote/PR route)\n' "gh:"
+    MISSING_GH=1
+  else
+    printf '  CLI    %-24s unavailable capability (not required for this non-GitHub/no-remote route)\n' "gh:"
+  fi
   print_repo_tools
 
   if [ "$MISSING_LOCAL" -eq 1 ] || [ "$MISSING_MATT" -eq 1 ] || [ "$MISSING_GIT" -eq 1 ] || [ "$MISSING_GH" -eq 1 ]; then
@@ -179,6 +236,13 @@ GUIDE
     return 1
   fi
 }
+
+REPO_FILES="$TMP_DIR/repo-files.txt"
+list_repo_files >"$REPO_FILES"
+GITHUB_ROUTE_REQUIRED=0
+if github_route_required; then
+  GITHUB_ROUTE_REQUIRED=1
+fi
 
 case "$TARGET" in
   codex|claude) check_host "$TARGET" ;;

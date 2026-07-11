@@ -39,7 +39,7 @@ Solo Ship fixes bounded review findings itself and retains control throughout. O
 | Failure | `diagnosing-bugs` | failing command, raw output, target symptom, relevant scope | Root cause is fixed with regression evidence, or an objective external blocker is proven. |
 | Conflict | `resolving-merge-conflicts` | merge target, both commit intents, conflict paths, specification sources | All conflicts are resolved and merge checks pass. |
 
-Parallelize the two review axes only when host and repository rules permit; otherwise run them sequentially in the main thread. Git, GitHub, CI, deployment, health, and browser work is performed directly.
+Parallelize the two review axes only when host and repository rules permit. When host or repository rules prohibit subagents, read the Matt `code-review` workflow and execute its Standards axis and Spec axis sequentially in the Solo Ship main thread. This is the Matt review process executed by the sole orchestrator, not a substitute review from another skill pack. Git, GitHub, CI, deployment, health, and browser work is performed directly.
 
 ## Workflow
 
@@ -47,11 +47,11 @@ Parallelize the two review axes only when host and repository rules permit; othe
 
 Read repository rules and inspect branch, upstream, remotes, worktrees, staged/unstaged/untracked state, stash, base candidates, existing PR and CI, and deployment entry points. Record the Entry Fence before changing anything. When the worktree is clean and ownership is unambiguous, build the simple proven Session Fence, Entry Fence, shipping set, and excluded set inline. If state is dirty, concurrent, or ambiguous, read `references/scope-fence.md` before classifying paths. If an owned or linked integration worktree exists or will be created, read `references/git-topology-and-cleanup.md` before creating or using it. Select risk level and matching repository profile. Use forward-slash paths in instructions and records.
 
-Completion: branch, upstream, base, worktree ownership, entry dirty set, shipping set, excluded set, risk level, PR/CI status, and deployment entry each have one unambiguous conclusion.
+Completion: branch, upstream, base, worktree ownership, content-recoverable Entry Fence, shipping set, excluded set, risk level, PR/CI status, and deployment entry each have one unambiguous conclusion; a heuristic miss remains `not detected by heuristic`, not proof of no deployment.
 
 ### 2. Review
 
-Pin the fixed point, commits, shipping diff, intent source, and standards. Invoke `code-review` for separate Standards and Spec verdicts. If no independent specification exists, use the user request, commit messages, and stable repository rules as the minimal intent source. Fix findings and rerun affected checks; use direct commands for routine corrections.
+Pin the fixed point, commits, shipping diff, intent source, and standards. Apply the Matt `code-review` process for separate Standards axis and Spec axis verdicts, using the host fallback above when delegation is prohibited. If no independent specification exists, use the user request, commit messages, and stable repository rules as the minimal intent source. Fix findings and rerun affected checks; use direct commands for routine corrections.
 
 Completion: every finding is fixed, proven false by evidence, or is an objective external blocker; no unverified risk is accepted by the agent.
 
@@ -93,7 +93,7 @@ Completion: every deletion target passes ownership, cleanliness, and merged chec
 
 ## Objective Blockers
 
-Stop only after exhausting safe in-scope alternatives when one external condition prevents progress: unavailable credentials, license, token, or protected-branch permission; persistently unavailable CI, deployment platform, or target service after bounded retries; no determinable deployment target after full entry-point investigation; an unauthorized irreversible data operation; an overlapping external edit that cannot be isolated without overwriting others; or incompatible business intent that specifications, tests, and current product facts cannot resolve.
+Stop only after exhausting safe in-scope alternatives when one external condition prevents progress: unavailable credentials, license, token, or protected-branch permission; persistently unavailable CI, deployment platform, or target service after bounded retries; deployment evidence exists but full investigation still leaves the target ambiguous, inaccessible, or unauthorized; an unauthorized irreversible data operation; an overlapping external edit that cannot be isolated without overwriting others; or incompatible business intent that specifications, tests, and current product facts cannot resolve. When full investigation positively proves that the repository has no deployment entry or runtime target, record `deployment: not applicable` and continue through post-merge verification; absence of deployment is not a blocker.
 
 Do not present a routine option menu. Leave one recovery checkpoint containing branch, base, latest commit, remote and PR state, last passing verification, blocker evidence, and the single external condition needed to resume.
 

@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL="$ROOT/skills/workflow/solo-ship/SKILL.md"
+EVALUATIONS="$ROOT/tests/solo-ship-evaluations.md"
 
 required_files=(
   references/risk-levels.md
@@ -26,15 +27,69 @@ for required in code-review diagnosing-bugs resolving-merge-conflicts; do
   }
 done
 
-for forbidden in github:yeet land-and-deploy finishing-a-development-branch gstack-review; do
+for forbidden in github:yeet land-and-deploy finishing-a-development-branch gstack-review 'GStack `ship`' 'GitHub `yeet`'; do
   if grep -F "$forbidden" "$SKILL" >/dev/null; then
     echo "nested orchestrator remains: $forbidden" >&2
     exit 1
   fi
 done
 
-grep -F 'Deploy' "$SKILL" >/dev/null
-grep -F 'Post-deploy verify' "$SKILL" >/dev/null
+description="$(sed -n '/^---$/,/^---$/p' "$SKILL" | sed -n 's/^description:[[:space:]]*//p')"
+case "$description" in
+  *commit*|*push*)
+    echo "frontmatter must not trigger on commit/push-only requests" >&2
+    exit 1
+    ;;
+esac
+
+grep -F 'sole orchestrator' "$SKILL" >/dev/null
+grep -F 'Matt Leaf Skills' "$SKILL" >/dev/null
+grep -F 'host or repository rules prohibit subagents' "$SKILL" >/dev/null
+grep -F 'Standards axis' "$SKILL" >/dev/null
+grep -F 'Spec axis' "$SKILL" >/dev/null
 grep -F 'deployment: not applicable' "$SKILL" >/dev/null
+
+stage_count="$(grep -Ec '^### [1-8]\. ' "$SKILL")"
+[ "$stage_count" -eq 8 ] || {
+  echo "expected exactly 8 ordered workflow stages, found $stage_count" >&2
+  exit 1
+}
+
+completion_count="$(grep -c '^Completion:' "$SKILL")"
+[ "$completion_count" -eq 8 ] || {
+  echo "expected exactly 8 Completion clauses, found $completion_count" >&2
+  exit 1
+}
+
+awk '
+  /^### [1-8]\. / {
+    if (in_stage && completions != 1) exit 1
+    expected++
+    if ($2 != expected ".") exit 1
+    in_stage=1
+    completions=0
+    next
+  }
+  /^Completion:/ && in_stage { completions++ }
+  END {
+    if (expected != 8 || completions != 1) exit 1
+  }
+' "$SKILL" || {
+  echo "each ordered stage must contain exactly one Completion clause" >&2
+  exit 1
+}
+
+for run_id in /root/green_merge /root/green_dirty /root/green_orchestrator; do
+  grep -F "Run identifier: \`$run_id\`" "$EVALUATIONS" >/dev/null || {
+    echo "missing GREEN transcript: $run_id" >&2
+    exit 1
+  }
+done
+
+green_pass_count="$(grep -c '^GREEN_RESULT: PASS$' "$EVALUATIONS")"
+[ "$green_pass_count" -eq 3 ] || {
+  echo "expected exactly 3 GREEN_RESULT: PASS records, found $green_pass_count" >&2
+  exit 1
+}
 
 echo "solo-ship contract: ok"
