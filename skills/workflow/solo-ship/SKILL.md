@@ -1,346 +1,102 @@
 ---
 name: solo-ship
-description: Use when the user wants Codex to finish a completed code change or current branch for solo development, especially prompts like ship this, finish the branch, land it, merge it, push it, clean up after merge, or handle review-to-merge closure. Also use for scope-limited shipping requests such as ship what you changed, ship this session, commit this conversation's changes, only ship this chat, ship current local changes, or ship the current working tree.
+description: Use when the user asks to ship, land, release, deploy, finish a completed branch, or carry completed work through production verification in a solo-development repository.
 ---
 
 # Solo Ship
 
-## Overview
+## Core Contract
 
-Use this skill as the autonomous closure workflow for solo developer shipping after code changes are already mostly complete. Prefer existing specialized skills for each phase; this skill decides when to invoke them, defines entry and exit conditions, and stops only at explicit risk gates.
+Solo Ship is the sole orchestrator for completed solo-development work. Its single endpoint is merged, deployed, and production-verified work. A merge, commit, or push is never completion. A request only to commit or push uses direct Git commands and does not trigger this skill.
 
-Default invocation:
+Do not invoke another shipping, landing, publishing, finishing, or deployment orchestrator. Use direct Git, GitHub, CI, deployment, HTTP, service, and browser tools or repository commands. Make routine technical choices autonomously, choosing the safest reversible repository-native route. Do not ask the user to select workflow options.
 
-```text
-Use $solo-ship to finish the current branch.
-```
+Every mode reaches Deploy. End with `deployment: not applicable` only after repository rules, CI, scripts, remote configuration, and service documentation prove that no deployment entry exists.
 
-Default parameters:
+## Parameters
 
-```text
-mode=auto scope=auto evidence=auto pr=auto cleanup=auto merge=auto docs=auto approval=stop-rules-only
-```
+Defaults: `mode=auto scope=auto evidence=auto pr=auto merge=auto cleanup=auto docs=auto approval=objective-blockers-only`.
 
-Supported parameters:
-
-| Parameter | Values | Default | Meaning |
-| --- | --- | --- | --- |
-| `mode` | `auto`, `quick`, `standard`, `strict` | `auto` | Risk level and workflow depth |
-| `scope` | `auto`, `session`, `entry`, `explicit` | `auto` | Which dirty files may enter the shipping set |
-| `evidence` | `auto`, `reuse`, `fresh` | `auto` | Whether prior review and verification evidence can replace reruns |
-| `pr` | `auto`, `true`, `false` | `auto` | Whether to use a GitHub PR review step |
-| `cleanup` | `ask`, `auto`, `skip` | `auto` | Whether to delete branches and worktrees after merge |
-| `merge` | `auto`, `local`, `pr` | `auto` | Merge locally or through a PR |
-| `docs` | `auto`, `skip`, `required` | `auto` | Whether docs or changelog updates are required |
-| `approval` | `stop-rules-only`, `ask` | `stop-rules-only` | Whether routine review, commit, push, merge, and safe cleanup decisions should proceed automatically or pause for confirmation |
-
-If parameters conflict, use the safer option and tell the user. For example, `mode=strict pr=false` requires a clear user override before skipping PR review. `approval=stop-rules-only` never overrides Stop Rules.
-
-For detailed mode criteria, load `references/risk-levels.md`.
-
-## Autonomous Closure Contract
-
-The default contract is: do the routine shipping work without asking, and stop only when judgment or safety requires the user.
-
-Proceed automatically when all are true:
-
-- review findings are either fixed or can be recorded as accepted low risk
-- verification has passed, or the remaining limitation is explicitly non-blocking for the selected mode
-- commit scope can be isolated from unrelated changes
-- push, merge, and cleanup targets are unambiguous
-- cleanup touches only merged branches, completed remote branches, or clean redundant worktrees
-
-Stop and ask only for Stop Rules, product judgment, credentials, destructive data changes, protected branch policy decisions, unmerged dirty work, or skipping a strict-mode requirement.
-
-## Scope Fence
-
-Use a two-layer Scope Fence. The session fence answers "did this conversation create or claim the work?" The entry fence answers "was it dirty when solo-ship started?" The default shipping set is the intersection of both fences, plus files this skill changes later to fix review findings, tests, docs, merge conflicts, or verification fallout for that set.
-
-### Session Fence
-
-Before relying on `git diff`, identify the session scope from the current conversation:
-
-- files this Codex session created or edited
-- files the user explicitly named as part of this ship request
-- files already staged by this session for the requested work
-- files required to fix review, tests, docs, or merge fallout for those files
-
-Do not infer session scope from Git dirtiness alone. If the conversation has been compacted, resumed, or lacks enough evidence to tell which files this session changed, use `scope=explicit`: stop and ask for a path allowlist instead of absorbing all dirty files.
-
-### Entry Fence
-
-At invocation, take an entry snapshot of staged, modified, deleted, renamed, and untracked files. Do not review, fix, stage, commit, merge because of, clean up, or otherwise absorb files that become dirty after the entry snapshot unless this skill changed them for the fenced shipping set. Treat later changes from users, tools, background processes, or other agents as concurrent external work to preserve, not as new ship scope.
-
-### Scope Modes
-
-| Scope mode | Use when | Shipping set |
+| Parameter | Values | Meaning |
 | --- | --- | --- |
-| `session` | The user says "ship what you changed", "this session", "this chat", or similar | Session fence only, then entry-fence out later external changes |
-| `entry` | The user explicitly says to ship all current local changes or the current working tree | Entry snapshot, after classifying unrelated and ambiguous paths |
-| `explicit` | The user names paths, or session evidence is ambiguous | Only the named paths and required fallout fixes |
-| `auto` | Default | Choose `session` for chat/session wording, `entry` for current-worktree wording, and `explicit` when uncertain |
+| `mode` | `auto`, `quick`, `standard`, `strict`, `release` | Verification depth; read `references/risk-levels.md` for auto selection or escalation. |
+| `scope` | `auto`, `session`, `entry`, `explicit` | Owned paths; read `references/scope-fence.md` when dirty, concurrent, or ambiguous state exists. |
+| `evidence` | `auto`, `reuse`, `fresh` | Prior-evidence treatment; read `references/evidence-policy.md` whenever prior evidence exists. |
+| `pr` | `auto`, `true`, `false` | PR use, constrained by repository policy. |
+| `merge` | `auto`, `local`, `pr` | Repository-permitted integration route. |
+| `cleanup` | `auto`, `skip` | Safe owned-local-resource cleanup. |
+| `docs` | `auto`, `skip`, `required` | Factual documentation affected by the shipping set. |
 
-If external changes overlap a fenced file, alter branch topology, or otherwise prevent a safe commit, merge, or cleanup, stop with a checkpoint that names the conflicting paths or state. Do not expand the shipping set to catch up with concurrent work.
+Explicit parameters may deepen checks but cannot change the endpoint or waive an objective blocker. Apply a matching file under `references/repository-profiles/` only when the repository root proves the match.
 
-## Prior Evidence Intake
+## Matt Leaf Skills
 
-Before review or verification reruns, inspect recent evidence that may already cover the fenced scope:
+Solo Ship fixes bounded review findings itself and retains control throughout. Only these Matt leaf skills may receive a bounded phase:
 
-- progress ledgers such as `.superpowers/sdd/progress.md`
-- review reports, review packages, PR reviews, or code-review verdicts
-- test/lint/build command results recorded in the conversation or repo artifacts
-- browser QA reports, screenshots, or `report.json` files
-- staged-diff checks from the same fenced scope
-
-Classify each evidence item:
-
-| Class | Use when | Action |
-| --- | --- | --- |
-| `reuse` | Same branch, same fenced files, no relevant file changed after the evidence, command target still matches, and verdict passed | Do not rerun; cite the evidence path or command result |
-| `rerun-minimal` | Evidence is mostly current but staging, untracked files, route paths, or final packaging changed | Run the smallest guard/check that closes the gap |
-| `rerun-required` | Scope expanded, relevant files changed after evidence, environment changed, evidence failed/blocked, or evidence lacks the files being shipped | Rerun the relevant review or verification |
-
-`evidence=fresh` skips reuse and reruns. `evidence=reuse` still cannot reuse stale, failed, blocked, or out-of-scope evidence. Never reuse browser QA if the route, user, case, base URL, or target page set differs from the ship target.
-
-## Auto Decision Rules
-
-Use these rules when a parameter is `auto`:
-
-| Decision | Automatic choice |
-| --- | --- |
-| `mode` | Start from `references/risk-levels.md`; escalate when review, tests, CI, or touched surfaces reveal more risk |
-| `scope` | Use `session` for "what you changed"/"this session" wording, `entry` for explicit "current working tree/all local changes" wording, and `explicit` when session evidence is ambiguous |
-| `evidence` | Reuse only when prior evidence is current for the fenced scope; otherwise rerun the smallest verification that closes the gap |
-| `pr` | Use PR review for `strict`, existing PRs, branch protection, required CI, large diffs, or repository policy; otherwise skip for quick/standard work after local review and verification |
-| `merge` | Use PR merge when PR/CI/policy requires it; otherwise local merge is allowed after push and verification |
-| `docs` | Require docs/changelog for user-visible behavior, public API, deployment, or strict-mode changes; otherwise record why docs were skipped |
-| `cleanup` | Delete local/remote branches and remove worktrees only after post-merge verification and merged/clean safety checks |
-
-Do not ask the user to choose among these unless more than one safe target remains after inspecting the repository.
-
-## Required Orientation
-
-Begin every run by inspecting the real repository state:
-
-```bash
-git status --short --branch
-git branch --show-current
-git remote -v
-git worktree list
-git diff --stat
-git diff --name-only
-git diff --cached --name-only
-git ls-files --others --exclude-standard
-```
-
-Record these results as the entry snapshot before review, fixes, verification, or staging. Also inspect untracked files before committing or cleaning up. If this is not a git repository, stop and explain the blocker.
-
-Determine:
-
-- current branch and upstream branch
-- base branch, usually `main` or `master`
-- whether the current directory is a worktree
-- dirty, staged, and untracked files
-- selected scope mode and the session evidence supporting it
-- fenced shipping scope from the session fence and entry snapshot
-- selected evidence mode and reusable evidence candidates
-- whether a remote exists
-- whether a PR already exists
-- likely mode if `mode=auto`
-- whether this repository has a local shipping profile below
-
-After orientation, state the detected mode and why in one concise update.
-
-## Mode Selection
-
-Use `mode=auto` unless the user explicitly provides a mode.
-
-- Use `quick` for docs, comments, tiny local fixes, and low-risk single-surface changes.
-- Use `standard` for normal features, bug fixes, UI behavior changes, API additions, and local refactors.
-- Use `strict` for database migrations, auth, permissions, payments, deployment, CI, public API changes, data deletion, broad refactors, security-sensitive changes, or anything likely to affect existing users.
-
-Escalate mode when the diff or test failures reveal higher risk. Do not downgrade an explicit user-provided mode unless the user asks.
-
-## Skill Orchestration
-
-Use existing skills by opening their `SKILL.md` when they are relevant and available. If a referenced skill is unavailable, use the closest manual workflow and mention the fallback in the final response.
-
-| Phase | Skills to use | Use when | Exit condition |
+| Phase | Leaf skill | Pinned input | Return condition |
 | --- | --- | --- | --- |
-| Review | `review` (`gstack-review` only if the host exposes that alias) | Any non-cleanup shipping task | Findings are addressed or explicitly accepted |
-| Fix | `superpowers:receiving-code-review` | Review or tests find issues | Fixes are implemented and diff is rechecked |
-| Debug | `superpowers:systematic-debugging`, `diagnosing-bugs` | Failure cause is unclear | Root cause is found and fixed, or blocker is clear |
-| TDD | `tdd`, `superpowers:test-driven-development` | New behavior, bug fixes, or `strict` mode | Tests demonstrate the intended behavior or non-use is justified |
-| Verify | `superpowers:verification-before-completion`, `health` | Before commit, before merge, and after merge | Relevant verification commands have run and results are known |
-| Commit and Push | `github:yeet`, `yeet`, or explicit `git` + `gh` CLI fallback | Ready to create commits and push | Commit scope is correct, message explains why, push succeeds |
-| PR Review | `github:github`, `github:gh-address-comments`, unprefixed equivalents, or explicit `gh` CLI fallback | `pr=true`, `merge=pr`, existing PR, or `strict` mode | PR diff is reviewed and comments are resolved or recorded |
-| CI Fix | `github:gh-fix-ci`, `gh-fix-ci`, or explicit `gh run` / `gh pr checks` fallback | GitHub checks fail | CI cause is fixed or external blocker is identified |
-| Merge | `ship` | Standard merge workflow | Work is merged to `main` or `master` |
-| Deploy Merge | `land-and-deploy` | Deployment or post-merge canary matters | CI, deploy, and user-visible verification are complete |
-| Docs | `document-release`, `changelog`, or manual changelog note | `docs=required`, `strict` mode, or user-visible behavior changes | Docs/changelog updated or explicit no-doc rationale is recorded |
-| Cleanup | `superpowers:finishing-a-development-branch`, `careful`, `guard` | After successful post-merge verification | Redundant branch/worktree cleanup is complete or intentionally skipped |
+| Review | `code-review` | fixed point, commit list, diff, specification sources, repository standards | Standards and Spec axes both have verdicts. |
+| Failure | `diagnosing-bugs` | failing command, raw output, target symptom, relevant scope | Root cause is fixed with regression evidence, or an objective external blocker is proven. |
+| Conflict | `resolving-merge-conflicts` | merge target, both commit intents, conflict paths, specification sources | All conflicts are resolved and merge checks pass. |
 
-Host naming differs. Codex plugin skills may be visible with prefixes such as `github:yeet` or `superpowers:test-driven-development`; Claude Code may expose local skills without those prefixes, or may require a manual `gh` CLI fallback. Treat a phase as ready when one suitable skill or explicit fallback is available. If availability is unclear, run `setup`.
+Parallelize the two review axes only when host and repository rules permit; otherwise run them sequentially in the main thread. Git, GitHub, CI, deployment, health, and browser work is performed directly.
 
 ## Workflow
 
 ### 1. Orient
 
-Inspect repository state, record the entry snapshot, select mode, select scope mode, and build the Scope Fence. If the working tree contains changes outside the fenced scope, protect them. Do not revert or overwrite user changes.
+Read repository rules and inspect branch, upstream, remotes, worktrees, staged/unstaged/untracked state, stash, base candidates, existing PR and CI, and deployment entry points. Record the Entry Fence before changing anything. Build the Session Fence and classify every path using `references/scope-fence.md`. Select risk level and matching repository profile. Use forward-slash paths in instructions and records.
 
-Classify every dirty or untracked path before staging:
+Completion: branch, upstream, base, worktree ownership, entry dirty set, shipping set, excluded set, risk level, PR/CI status, and deployment entry each have one unambiguous conclusion.
 
-- in scope for this ship
-- excluded by the session fence
-- excluded by the entry fence as later external work
-- unrelated user work to preserve
-- generated/ignored artifact to leave alone
-- ambiguous path that triggers a Stop Rule
+### 2. Review
 
-During the rest of the run, compare later `git status` and diff checks against the fenced scope. Exclude new external dirty paths from review, verification decisions, staging, commits, and cleanup unless this skill created them for the fenced scope.
+Pin the fixed point, commits, shipping diff, intent source, and standards. Invoke `code-review` for separate Standards and Spec verdicts. If no independent specification exists, use the user request, commit messages, and stable repository rules as the minimal intent source. Fix findings and rerun affected checks; use direct commands for routine corrections.
 
-Use explicit path staging for mixed worktrees. Do not use `git add -A` when unrelated changes exist.
+Completion: every finding is fixed, proven false by evidence, or is an objective external blocker; no unverified risk is accepted by the agent.
 
-### 2. Intake Prior Evidence
+### 3. Verify before package
 
-Build a compact evidence table before rerunning expensive work:
+Maintain the evidence record defined in `references/evidence-policy.md`. Run repository-classified targeted tests, static checks, builds, and cheap boundary checks. Release risk runs the repository release matrix; real external paths require runtime evidence. A related failure may be treated as pre-existing only with a passing baseline comparison; otherwise invoke `diagnosing-bugs` and return here.
 
-- `review`: prior review verdicts and unresolved findings
-- `tests`: exact commands, pass/fail status, and covered paths
-- `lint/build`: exact commands and pass/fail status
-- `browser`: report path, user, case, base URL, target paths, blocked flag, console errors
-- `packaging`: whether untracked files and staged files were included in review evidence
+Completion: every risk surface in the shipping set has fresh passing evidence or a baseline comparison proving remaining failures are unrelated; staged set and reviewed set have not drifted.
 
-For each item, mark `reuse`, `rerun-minimal`, or `rerun-required`. Explain only the items that are reused or rerun; do not paste long logs. If evidence is reused, the completion criterion is a current file/scope check proving it still covers the fenced shipping set.
+### 4. Package and publish
 
-### 3. Review
+Stage explicit shipping paths, then inspect staged status, name list, and diff. Commit by coherent theme and push the exact target. Create or update a PR when policy, protection, or CI requires it. Poll required CI and review feedback; fix failures and repeat review or verification where the tree changed.
 
-Run a code-review style pass before committing unless a current prior review is classified `reuse`. Prioritize logic correctness, edge cases, old behavior regressions, test gaps, documentation gaps, and whether the commit message can explain why the change exists.
+Completion: commits contain only the shipping set; the remote commit matches the intended local commit; required CI and review pass.
 
-In `quick` mode, a focused diff review is enough. In `standard` and `strict` modes, use the dedicated review skill when available. If a prior review is reused, still inspect the staged diff boundaries before committing.
+### 5. Merge
 
-### 4. Fix
+Read `references/git-topology-and-cleanup.md`. Fetch and re-check remote base immediately before integration. Use the repository-permitted PR or local merge route. If base advanced, recompute the diff and rerun the evidence made stale. Invoke `resolving-merge-conflicts` only for actual conflicts, then return here.
 
-Address review findings and failing tests. Re-run the smallest meaningful verification after each fix. If a failure is unclear, switch to systematic debugging rather than guessing.
+Completion: the target commit is reachable from the integration branch, the merge result matches the remote, and no conflict remains unresolved.
 
-Loop until one of these is true:
+### 6. Deploy
 
-- no blocking review findings remain
-- remaining findings are explicitly recorded as accepted risk
-- a Stop Rule blocks further progress
+Identify merge-triggered CI/CD, a repository manual deployment command, or an explicit service-update process. Execute or wait for it with bounded retries, then read the real deployment status and running revision. Do not infer success from merge status.
 
-After nontrivial fixes, re-check the diff before committing.
+Completion: when a deployment target exists, its job succeeds and evidence proves the target version or commit is running; when none exists, repository facts prove `deployment: not applicable` after entry-point investigation.
 
-### 5. Verify Before Commit
+### 7. Post-deploy verify
 
-Run project-appropriate tests, lint, type checks, builds, or manual checks unless current prior evidence covers that exact risk. Prefer the repository's documented commands. If no test command is discoverable, say so and perform the strongest reasonable local check.
+Use the matching repository profile to check affected service state, ports, health endpoints, critical APIs, target pages, browser console, user paths, and necessary canary evidence. Compare the running revision with the merged commit. A regression returns to `diagnosing-bugs`, verification, packaging, merge, and deployment as needed.
 
-Use `rerun-minimal` for cheap boundary checks that should almost never be skipped: `git diff --check`, staged diff/name checks, and any guard test that protects the shipped contract. Use `rerun-required` for any relevant source file changed after the last passing evidence.
+Completion: target user paths and critical health evidence pass, deployed revision matches the merged commit, and no regression introduced by this work remains.
 
-Do not commit until verification has either passed or the remaining risk is explicitly reported.
+### 8. Cleanup and report
 
-### 6. Commit and Push
+Apply `references/git-topology-and-cleanup.md`. Remove only owned, clean, merged local worktrees and branches. Preserve remote branches by default, preserve every stash, and leave excluded or concurrent changes untouched. Produce the report below.
 
-Use a commit message that states why the change was made, not only what changed. Keep unrelated changes out of the commit. Push after the commit unless the user asked for a local-only workflow.
+Completion: every deletion target passes ownership, cleanliness, and merged checks; the final report lists deployment, acceptance, commits, merge, cleanup, and excluded files.
 
-Before committing, run `git diff --cached --stat` and `git diff --cached --name-only`; the staged set must match the reviewed shipping scope. If unrelated changes are already staged, unstage or stop before committing.
+## Objective Blockers
 
-### 7. Optional PR Review
+Stop only after exhausting safe in-scope alternatives when one external condition prevents progress: unavailable credentials, license, token, or protected-branch permission; persistently unavailable CI, deployment platform, or target service after bounded retries; no determinable deployment target after full entry-point investigation; an unauthorized irreversible data operation; an overlapping external edit that cannot be isolated without overwriting others; or incompatible business intent that specifications, tests, and current product facts cannot resolve.
 
-Use PR review when:
+Do not present a routine option menu. Leave one recovery checkpoint containing branch, base, latest commit, remote and PR state, last passing verification, blocker evidence, and the single external condition needed to resume.
 
-- `pr=true` or `merge=pr`
-- `mode=strict`
-- a PR already exists
-- CI or repository policy requires a PR
-- the diff is large enough that a second review surface is useful
+## Final Report
 
-If `pr=auto`, skip PR review for clearly quick work after local review and verification.
-
-### 8. Merge
-
-Merge only after review and verification are complete. Use `ship` for the normal case. Use `land-and-deploy` when deployment, canary checks, or live service verification matter.
-
-Before claiming the merge is final, fetch and re-check topology against the remote base. If `origin/main` or `origin/master` advanced while shipping, resolve the new topology and repeat the required verification.
-
-### 9. Post-Merge Verify
-
-After merge, switch to the base branch, update it, and re-run the key verification command(s). This is mandatory unless the user explicitly asks to stop before merge.
-
-### 10. Cleanup
-
-Cleanup is allowed only after post-merge verification succeeds or the user explicitly accepts the residual risk.
-
-Before deleting anything, verify:
-
-```bash
-git status --short --branch
-git branch --merged
-git worktree list
-```
-
-For a worktree, inspect that worktree's `git status --short --branch` before removal. Delete local branches only when they are merged. Delete remote branches only when they correspond to the completed branch and are no longer needed.
-
-If `cleanup=ask`, ask before deleting local branches, remote branches, or worktrees. If `cleanup=skip`, leave cleanup instructions or a concise list of remaining artifacts. If `cleanup=auto`, proceed only when all safety checks are clean and cleanup targets are unambiguous.
-
-When cleanup proceeds automatically, report exactly what was deleted and what was intentionally left behind.
-
-## Repository Profiles
-
-Apply a profile only when orientation proves the checkout matches it.
-
-### WAVER (`D:\codes\WAVER`)
-
-Use this profile when the repository root is `D:\codes\WAVER`.
-
-- Python commands use `conda run -n WAVER <command>`.
-- Keep staging boundaries explicit; prefer exact path lists over broad staging.
-- If unrelated dirty work exists before merge, preserve it with a documented stash or stop if the scope is ambiguous. Quote stash refs in PowerShell, e.g. `'stash@{0}'`.
-- After merging back to `main`, restart the local backend service `WAVER-Backend`.
-- Restart or verify the Vite dev server on port `5173` when it is running or frontend preview is part of the work. The command shape is `npm run dev -- --host 0.0.0.0 --port 5173 --strictPort` from `web/`.
-- Post-merge runtime proof must be separate checks: `Get-Service WAVER-Backend`, process/port checks for `8000` and `5173`, `http://localhost:8000/api/health`, and the relevant UI route or local Vite URL when frontend verification applies.
-- Trust live service/process/HTTP evidence, not stale logs.
-
-## Checkpointing
-
-When stopping before completion, leave a concise recovery checkpoint in the final response:
-
-- current branch, base branch, and upstream
-- latest commit hash and push target, if any
-- PR URL, if any
-- last successful verification command
-- exact blocker or Stop Rule
-- next safe command or decision needed
-
-## Stop Rules
-
-Stop and ask or report a blocker when:
-
-- the repository has unrelated dirty changes that would be committed or deleted
-- session scope cannot be reconstructed and the user has not provided an explicit path allowlist
-- post-invocation external changes overlap fenced files or make the fenced scope impossible to isolate
-- the base branch cannot be determined
-- tests fail and the root cause is not understood
-- `evidence=reuse` was requested but the prior evidence is stale, blocked, failed, or cannot be tied to the fenced scope
-- merge conflicts require product judgment
-- branch or worktree cleanup would delete unmerged or dirty work
-- `strict` mode would skip PR, CI, or docs without explicit user approval
-- multiple plausible commit, push, merge, cleanup, or deployment targets remain after inspection
-- credentials, protected-branch overrides, destructive data changes, or irreversible migrations are required
-
-## Final Response
-
-Report:
-
-- mode and scope used, and whether each was explicit or detected
-- evidence mode used, what was reused, and what was rerun
-- review result and fixes made
-- verification commands and outcomes
-- commit hash and push target, if created
-- merge target and result, if merged
-- post-merge verification result
-- cleanup performed or intentionally skipped
-- files excluded by session or entry fences, if any
-- any checkpoint needed to resume
-
-Keep the final concise, but include unresolved risks.
+Report mode and scope; evidence reused and rerun; review verdicts and fixes; verification commands and results; commits and push target; PR/CI and merge result; deployment job and running revision or proven `deployment: not applicable`; post-deploy health and user-path evidence; cleanup; excluded files; and any objective-blocker checkpoint.
