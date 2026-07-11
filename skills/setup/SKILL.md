@@ -1,19 +1,23 @@
 ---
 name: setup
-description: Set up and repair this personal skills package across Codex and Claude Code. Use before first installing the package, after moving to a new machine, when a bundled skill is not visible, or when solo-ship reports missing orchestration skills or plugin-backed skills such as github:yeet, github:github, changelog, gh-address-comments, gh-fix-ci, Superpowers, GStack, or Matt Pocock skills. This is the expandable setup entrypoint for the repository.
+description: Set up and repair this personal skills package across Codex and Claude Code. Use before first installation, after moving to a new machine, when a bundled skill is not visible, or when solo-ship reports a missing Matt leaf skill or required Git, GitHub CLI, test, CI, or deployment tool capability.
 ---
 
 # Setup
 
-This is the top-level setup skill for this skills repository. It checks host visibility, installs or refreshes this repo's bundled skills when requested, and reports external dependencies that need user-controlled installation.
+This is the setup entrypoint for this skills repository. It checks host visibility, installs or refreshes this repository's bundled skills when requested, and reports the external Matt leaf skills and tool capabilities used by `solo-ship`.
 
-Default posture: checks are read-only. Installing this repository's own skills is allowed when the user asks for setup or repair. External packs, marketplace plugins, and third-party tools require explicit user confirmation and should usually be presented as commands or plugin actions rather than silently installed.
+Checks are read-only by default. Installing this repository's own skills is allowed when the user asks for setup or repair. Installing the external Matt skill pack requires explicit user confirmation.
 
-## Current Modules
+## Solo Ship Contract
 
-- `solo-ship`: checks the skills and plugins that `solo-ship` can orchestrate across Codex and Claude Code.
+`solo-ship` remains the sole workflow orchestrator. Its only skill dependencies are these bounded Matt leaf skills:
 
-Add future setup modules here as this repository grows.
+- `code-review`
+- `diagnosing-bugs`
+- `resolving-merge-conflicts`
+
+Git, GitHub CLI, repository tests, CI, and deployment commands are tool capabilities. Do not report them as skill dependencies and do not require other publishing, finishing, or deployment orchestrator skills.
 
 ## Core Commands
 
@@ -33,64 +37,47 @@ scripts/setup-solo-ship.sh --target claude --install-local
 scripts/setup-solo-ship.sh --target all --install-local
 ```
 
-Use `--strict` in automation when missing hard dependencies should fail the run.
+Use `--strict` in automation when a bundled skill, Matt leaf skill, or required CLI is missing.
 
 ## Process
 
 ### 1. Explore
 
-Inspect the real repository and host surfaces:
+Inspect the repository and host surfaces:
 
 ```bash
 git status --short --branch
 scripts/setup-solo-ship.sh --target all
 ```
 
-For Codex-specific visibility, prefer `codex debug prompt-input` over filesystem guesses. Codex plugin skills may appear with prefixes such as `github:yeet` and `superpowers:verification-before-completion`.
-
-For Claude Code, check `~/.claude/skills` and `~/.agents/skills`. Claude may not see Codex plugin-prefixed names; that is a host capability mismatch, not necessarily a broken bundled skill.
+For Codex visibility, prefer `codex debug prompt-input` with filesystem fallback. For Claude Code, check `~/.claude/skills` and `~/.agents/skills`.
 
 ### 2. Interpret
 
-Evaluate by phase capability, not by one exact skill name:
-
-- Review is satisfied by `review`; do not treat `gstack-review` as required when GStack registers the skill as `review`.
-- Commit and push is best satisfied by `github:yeet` in Codex. In Claude, accept an equivalent `yeet` skill when installed, otherwise fall back to explicit `git` plus `gh` CLI steps.
-- PR review is best satisfied by `github:github` plus `github:gh-address-comments` in Codex. In Claude, accept unprefixed equivalents or use `gh pr view`, `gh pr diff`, `gh pr checks`, and `gh pr comment` manually.
-- CI fix is best satisfied by `github:gh-fix-ci` in Codex, or `gh-fix-ci` / manual `gh run` inspection elsewhere.
-- Docs are satisfied by `document-release` or `changelog`; if both are absent, record a manual changelog note.
+Require exact visibility for `solo-ship` and the three Matt leaf skills. Report Git and `gh` separately as CLI capabilities. Discover repository-native test, CI, and deployment entry points from repository files; their absence is a workflow fact to investigate, not a missing skill.
 
 ### 3. Repair
 
-If only this repo's skills are missing, run the local install command:
+If this repository's bundled skills are missing, run the matching local install command:
 
 ```bash
 scripts/setup-solo-ship.sh --target codex --install-local
 ```
 
-Use `--target claude` or `--target all` when the user is fixing Claude Code as well.
+If a Matt leaf skill is missing, present this command and wait for explicit confirmation before running it:
 
-For external dependencies, present the smallest relevant option and wait for the user's reply before running it:
+```bash
+npx skills@latest add mattpocock/skills -g
+```
 
-1. GStack skills: update `/Users/lichao/.gstack/repos/gstack`, then run its setup for the affected host.
-2. Codex GitHub plugin: enable or refresh the GitHub plugin in Codex so `github:yeet`, `github:github`, `github:gh-address-comments`, and `github:gh-fix-ci` become visible.
-3. Codex Superpowers plugin: enable or refresh the Superpowers plugin so prefixed Superpowers skills become visible.
-4. Matt skills: run `npx skills@latest add mattpocock/skills -g`, then link selected skills into the host skill directory if needed.
-
-Do not rewrite bundled skills to require host-specific plugin names when a phase-level fallback exists. Prefer documenting alternatives in the orchestration table.
+After installation, link or copy the three selected skill directories into the host skill directory only when the host still cannot see them.
 
 ### 4. Verify
 
-After repairs, rerun:
+Rerun the relevant strict check:
 
 ```bash
 scripts/setup-solo-ship.sh --target all --strict
 ```
 
-For Codex, also verify visible names:
-
-```bash
-codex debug prompt-input | rg "setup|solo-ship|github:yeet|github:github|changelog|ship|review"
-```
-
-Report the host, missing phase, visible alternatives, fallback path, and any command the user still needs to run.
+Report host, missing leaf skill, CLI status, repository test/CI/deployment entry points, and the exact remaining repair command.

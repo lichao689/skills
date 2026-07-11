@@ -5,26 +5,19 @@ usage() {
   cat <<'USAGE'
 Usage: scripts/check-solo-ship-deps.sh [--strict]
 
-Read-only dependency check for the solo-ship Codex workflow.
+Read-only dependency and tool-capability check for the solo-ship Codex workflow.
 
 Options:
-  --strict  Exit 1 when recommended dependency skills are missing.
+  --strict  Exit 1 when solo-ship, a Matt leaf skill, Git, or GitHub CLI is missing.
   -h,--help Show this help text.
 USAGE
 }
 
 STRICT=0
-
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --strict)
-      STRICT=1
-      shift
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
+    --strict) STRICT=1; shift ;;
+    -h|--help) usage; exit 0 ;;
     *)
       echo "error: unknown argument: $1" >&2
       usage >&2
@@ -48,148 +41,82 @@ has_visible_skill() {
     return 0
   fi
 
-  if [ -d "$HOME/.codex/skills/$skill" ] || [ -d "$HOME/.agents/skills/$skill" ]; then
-    return 0
-  fi
-
-  if [[ "$skill" == superpowers:* ]]; then
-    local short="${skill#superpowers:}"
-    find "$HOME/.codex/plugins/cache" -path "*/skills/$short/SKILL.md" -print -quit 2>/dev/null | grep . >/dev/null 2>&1
-    return $?
-  fi
-
-  return 1
+  [ -d "$HOME/.codex/skills/$skill" ] || [ -d "$HOME/.agents/skills/$skill" ]
 }
 
-has_gstack_skill() {
-  local skill="$1"
+MISSING_ANY=0
+print_skill() {
+  local label="$1"
+  local skill="$2"
 
   if has_visible_skill "$skill"; then
-    return 0
-  fi
-
-  if [ -d "$HOME/.codex/skills/gstack-$skill" ]; then
-    return 0
-  fi
-
-  return 1
-}
-
-print_group() {
-  local label="$1"
-  shift
-  local kind="$1"
-  shift
-  local found=()
-  local missing=()
-  local skill
-
-  for skill in "$@"; do
-    case "$kind" in
-      gstack)
-        if has_gstack_skill "$skill"; then
-          found+=("$skill")
-        else
-          missing+=("$skill")
-        fi
-        ;;
-      visible)
-        if has_visible_skill "$skill"; then
-          found+=("$skill")
-        else
-          missing+=("$skill")
-        fi
-        ;;
-      *)
-        echo "error: unsupported group kind: $kind" >&2
-        exit 1
-        ;;
-    esac
-  done
-
-  if [ "${#missing[@]}" -eq 0 ]; then
-    echo "$label: ok"
-  elif [ "${#found[@]}" -eq 0 ]; then
-    echo "$label: missing"
+    printf 'Skill: %-28s found (%s)\n' "$label" "$skill"
   else
-    echo "$label: partial"
-  fi
-
-  if [ "${#found[@]}" -gt 0 ]; then
-    printf '  found: %s\n' "${found[*]}"
-  fi
-
-  if [ "${#missing[@]}" -gt 0 ]; then
-    printf '  missing: %s\n' "${missing[*]}"
+    printf 'Skill: %-28s missing (%s)\n' "$label" "$skill"
     MISSING_ANY=1
   fi
 }
 
-MISSING_ANY=0
+print_cli() {
+  local command_name="$1"
+  local required="$2"
+
+  if command -v "$command_name" >/dev/null 2>&1; then
+    printf 'CLI:   %-28s found\n' "$command_name"
+  else
+    printf 'CLI:   %-28s missing\n' "$command_name"
+    if [ "$required" = "required" ]; then
+      MISSING_ANY=1
+    fi
+  fi
+}
 
 echo "Solo Ship dependency check"
-echo
 if [ "$PROMPT_AVAILABLE" -eq 1 ]; then
-  echo "Source: codex debug prompt-input"
+  echo "Source: codex debug prompt-input plus filesystem fallback"
 else
-  echo "Source: filesystem fallback; Codex prompt-surface check was unavailable"
+  echo "Source: filesystem fallback; Codex prompt-surface check unavailable"
 fi
 echo
 
-print_group "solo-ship" visible \
-  solo-ship
+print_skill "orchestrator" solo-ship
+print_skill "Matt review leaf" code-review
+print_skill "Matt failure leaf" diagnosing-bugs
+print_skill "Matt conflict leaf" resolving-merge-conflicts
 
 echo
-print_group "GStack recommended skills" gstack \
-  ship \
-  review \
-  health \
-  land-and-deploy \
-  careful \
-  guard
+print_cli git required
+print_cli gh required
 
-echo
-print_group "Superpowers recommended skills" visible \
-  superpowers:verification-before-completion \
-  superpowers:receiving-code-review \
-  superpowers:systematic-debugging \
-  superpowers:finishing-a-development-branch \
-  superpowers:test-driven-development
+if [ -f package.json ] || [ -f pyproject.toml ] || [ -f Makefile ] || [ -d tests ]; then
+  echo "Repo:  test entry points             detected"
+else
+  echo "Repo:  test entry points             not detected"
+fi
 
-echo
-print_group "Matt skills recommended skills" visible \
-  tdd \
-  diagnosing-bugs
+if [ -d .github/workflows ]; then
+  echo "Repo:  CI configuration              detected"
+else
+  echo "Repo:  CI configuration              not detected"
+fi
+
+if find . -maxdepth 3 -type f \( -iname '*deploy*' -o -iname 'Dockerfile' -o -iname 'compose.yml' -o -iname 'docker-compose.yml' \) -print -quit 2>/dev/null | grep . >/dev/null 2>&1; then
+  echo "Repo:  deployment entry points       detected"
+else
+  echo "Repo:  deployment entry points       not detected"
+fi
 
 if [ "$MISSING_ANY" -eq 1 ]; then
   cat <<'GUIDE'
 
-Install guidance
+Repair guidance
 
-This script is read-only and does not install external skill packs.
+This script is read-only and does not install external skills or tools.
 
-GStack:
-  If GStack already exists on this machine:
-    cd /Users/lichao/.gstack/repos/gstack
-    git pull --ff-only
-    ./setup --host codex --quiet
-    gstack-config set skill_prefix false
+Matt leaf skills:
+  npx skills@latest add mattpocock/skills -g
 
-  If GStack is not installed, install or clone it first, then run its Codex setup.
-
-Superpowers:
-  Install or enable the Superpowers plugin from Codex's plugin system, restart Codex if needed,
-  then rerun this check. You can inspect configured marketplaces with:
-    codex plugin marketplace list
-    codex plugin marketplace upgrade
-
-Matt skills:
-  Use the skills.sh installer and select the skills and agents you want:
-    npx skills@latest add mattpocock/skills -g
-
-  If Codex still cannot see selected Matt skills after installation, copy or link the selected
-  skill folders from ~/.agents/skills into ~/.codex/skills, then rerun:
-    codex debug prompt-input | rg "tdd|diagnosing-bugs"
+Install Git or GitHub CLI through the host package manager when its CLI status is missing.
 GUIDE
 fi
 
