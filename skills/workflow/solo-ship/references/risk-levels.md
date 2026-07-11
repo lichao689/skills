@@ -4,7 +4,7 @@ Read this reference for `mode=auto` and whenever discovered scope, failures, or 
 
 | Mode | Typical surfaces | Required verification depth |
 | --- | --- | --- |
-| `quick` | Docs, comments, copy, isolated style, obvious one-file fix | Focused diff review, targeted check, cheap boundaries, deployment and affected post-deploy proof. |
+| `quick` | Docs, comments, copy, isolated style, obvious one-file fix | Focused implementation within both `code-review` axes, targeted check, cheap boundaries, deployment and affected post-deploy proof. |
 | `standard` | Normal feature or bug fix, local API, bounded refactor, UI workflow | Both review axes, affected tests and static checks, build where applicable, deployment and affected runtime/user-path proof. |
 | `strict` | Auth, permissions, security, data, public contracts, broad refactor, CI/deployment, concurrency | Both review axes, full affected-surface matrix, PR/CI status where configured, docs impact, deployment revision proof, broad post-deploy checks. |
 | `release` | Production release, multiple coupled surfaces, irreversible or high-blast-radius delivery | Repository-defined release matrix, all required CI and artifact checks, real external-path evidence, deploy job evidence, revision match, canary and critical user journeys. |

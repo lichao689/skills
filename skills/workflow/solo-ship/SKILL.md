@@ -15,7 +15,7 @@ Every mode reaches Deploy. End with `deployment: not applicable` only after repo
 
 ## Parameters
 
-Defaults: `mode=auto scope=auto evidence=auto pr=auto merge=auto cleanup=auto docs=auto approval=objective-blockers-only`.
+Defaults: `mode=auto scope=auto evidence=auto pr=auto merge=auto cleanup=auto docs=auto`.
 
 | Parameter | Values | Meaning |
 | --- | --- | --- |
@@ -45,7 +45,7 @@ Parallelize the two review axes only when host and repository rules permit; othe
 
 ### 1. Orient
 
-Read repository rules and inspect branch, upstream, remotes, worktrees, staged/unstaged/untracked state, stash, base candidates, existing PR and CI, and deployment entry points. Record the Entry Fence before changing anything. Build the Session Fence and classify every path using `references/scope-fence.md`. Select risk level and matching repository profile. Use forward-slash paths in instructions and records.
+Read repository rules and inspect branch, upstream, remotes, worktrees, staged/unstaged/untracked state, stash, base candidates, existing PR and CI, and deployment entry points. Record the Entry Fence before changing anything. When the worktree is clean and ownership is unambiguous, build the simple proven Session Fence, Entry Fence, shipping set, and excluded set inline. If state is dirty, concurrent, or ambiguous, read `references/scope-fence.md` before classifying paths. If an owned or linked integration worktree exists or will be created, read `references/git-topology-and-cleanup.md` before creating or using it. Select risk level and matching repository profile. Use forward-slash paths in instructions and records.
 
 Completion: branch, upstream, base, worktree ownership, entry dirty set, shipping set, excluded set, risk level, PR/CI status, and deployment entry each have one unambiguous conclusion.
 
@@ -57,7 +57,7 @@ Completion: every finding is fixed, proven false by evidence, or is an objective
 
 ### 3. Verify before package
 
-Maintain the evidence record defined in `references/evidence-policy.md`. Run repository-classified targeted tests, static checks, builds, and cheap boundary checks. Release risk runs the repository release matrix; real external paths require runtime evidence. A related failure may be treated as pre-existing only with a passing baseline comparison; otherwise invoke `diagnosing-bugs` and return here.
+When prior review, test, build, CI, QA, or runtime evidence exists, read `references/evidence-policy.md` and classify it. Otherwise record all required checks as fresh without loading that reference. Run repository-classified targeted tests, static checks, builds, and cheap boundary checks. Release risk runs the repository release matrix; real external paths require runtime evidence. A related failure may be treated as pre-existing only with a passing baseline comparison; otherwise invoke `diagnosing-bugs` and return here.
 
 Completion: every risk surface in the shipping set has fresh passing evidence or a baseline comparison proving remaining failures are unrelated; staged set and reviewed set have not drifted.
 
@@ -81,9 +81,9 @@ Completion: when a deployment target exists, its job succeeds and evidence prove
 
 ### 7. Post-deploy verify
 
-Use the matching repository profile to check affected service state, ports, health endpoints, critical APIs, target pages, browser console, user paths, and necessary canary evidence. Compare the running revision with the merged commit. A regression returns to `diagnosing-bugs`, verification, packaging, merge, and deployment as needed.
+Use the matching repository profile to check affected service state, ports, health endpoints, critical APIs, target pages, browser console, user paths, and necessary canary evidence. When a deployment target exists, compare the running revision with the merged commit. When Step 6 proved `deployment: not applicable`, verify applicable merge and repository health surfaces without a running-revision comparison. A regression returns to `diagnosing-bugs`, verification, packaging, merge, and deployment as needed.
 
-Completion: target user paths and critical health evidence pass, deployed revision matches the merged commit, and no regression introduced by this work remains.
+Completion: when a deployment target exists, target user paths and critical health evidence pass, deployed revision matches the merged commit, and no regression introduced by this work remains; when deployment is not applicable, Step 6 proof remains valid, applicable merge and repository health surfaces pass without a running-revision comparison, and no regression introduced by this work remains.
 
 ### 8. Cleanup and report
 

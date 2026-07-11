@@ -24,4 +24,4 @@ Use exact-path staging. Never substitute the whole dirty worktree for ownership 
 
 ## Isolation Priority
 
-When the current worktree cannot safely package the shipping set, prefer a Solo-Ship-owned integration worktree created from the pinned clean base. Reconstruct only proven owned commits or patches there, then review and verify the isolated tree. Preserve overlapping user edits in their original worktree. If owned hunks cannot be isolated without guessing or overwriting external content, record the path as an objective blocker.
+When the current worktree cannot safely package the shipping set, prefer a Solo-Ship-owned integration worktree created from the pinned clean base. Before creating or using any linked or owned integration worktree, read `git-topology-and-cleanup.md`. Reconstruct only proven owned commits or patches there, then review and verify the isolated tree. Preserve overlapping user edits in their original worktree. If owned hunks cannot be isolated without guessing or overwriting external content, record the path as an objective blocker.
