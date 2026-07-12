@@ -40,7 +40,7 @@ Failed, blocked, environment-mismatched, or scope-incomplete evidence is never r
 | Base advance with relevant effect | invalidate affected axes | invalidate affected checks | invalidate |
 | Redeployment or target-environment change | retain | retain | reacquire from target |
 
-After a bounded fix, invalidate only evidence covering the changed content and its affected surfaces. Expand back to Bind only when intent, design, scope ownership, or excluded paths change.
+After a bounded fix, invalidate only evidence covering the changed content and its affected surfaces. Fall back from Fast to Full Bind only when intent, design, scope ownership, or excluded paths change.
 
 ## Evidence modes
 

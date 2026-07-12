@@ -1,106 +1,91 @@
 ---
 name: solo-ship
-description: Merge or deploy completed solo-development work. Use when the user asks to ship, finish, land, merge, release, deploy, or carry completed work through production verification; reuse valid development evidence and rerun only invalidated coverage.
+description: Fast-merge or deploy completed solo-development work. Use when the user asks to ship, finish, land, merge, release, or deploy; reuse valid implementation evidence and avoid repeating review, tests, packaging, or deployment work.
 ---
 
 # Solo Ship
 
 ## Contract
 
-Solo Ship validates completed work and carries it to one endpoint:
+Carry completed work to one endpoint:
 
 - `merge`: the target commit is on the remote integration branch.
-- `deploy`: `merge` plus successful deployment, running-revision proof, and affected-path verification.
+- `deploy`: `merge` plus the narrow required deployment and affected-path proof.
 
-A request only to commit or push uses direct Git commands. Do not invoke another shipping or deployment orchestrator. Use direct Git, GitHub, CI, deployment, HTTP, service, and browser tools or repository commands.
+A request only to commit or push uses direct Git. Do not invoke another shipping or deployment orchestrator.
 
-Defaults: `goal=auto mode=auto scope=auto evidence=auto pr=auto merge=auto cleanup=auto docs=auto`.
+Defaults: `goal=auto path=auto mode=auto evidence=auto`.
 
 | Parameter | Values | Binding |
 | --- | --- | --- |
-| `goal` | `auto`, `merge`, `deploy` | `auto` selects `deploy` for deploy/release/production intent and `merge` for ship/finish/land/merge intent. |
-| `mode` | `auto`, `quick`, `standard`, `strict`, `release` | Verification depth; read `references/risk-levels.md` for selection or escalation. |
-| `scope` | `auto`, `session`, `entry`, `explicit` | Owned paths; read `references/scope-fence.md` when state is dirty, concurrent, or ambiguous. |
-| `evidence` | `auto`, `reuse`, `fresh` | Prior-evidence treatment; read `references/evidence-policy.md` whenever prior evidence exists. |
-| `pr` | `auto`, `true`, `false` | PR use, constrained by repository policy. |
-| `merge` | `auto`, `local`, `pr` | Repository-permitted integration route. |
-| `cleanup` | `auto`, `skip` | Safe cleanup of owned temporary resources. |
-| `docs` | `auto`, `skip`, `required` | Factual documentation affected by the shipping set. |
+| `goal` | `auto`, `merge`, `deploy` | Deploy/release/production intent selects `deploy`; ship/finish/land/merge selects `merge`. |
+| `path` | `auto`, `fast`, `full` | `auto` tries Fast first. Explicit `fast` is a preference, never a waiver. |
+| `mode` | `auto`, `quick`, `standard`, `strict`, `release` | Required risk coverage; read `references/risk-levels.md` only when selection is unclear or elevated. |
+| `evidence` | `auto`, `reuse`, `fresh` | Prior-evidence treatment; read `references/evidence-policy.md` only for a disputed, partial, or invalidated item. |
 
-Explicit parameters may deepen checks but cannot waive repository policy or an objective blocker. Apply a matching file under `references/repository-profiles/` only when the repository root proves the match.
+Path and mode are independent. `fast + strict` is valid when strict evidence already covers the current commit.
 
-## Delivery Lanes
+## Choose a Path
 
-Keep merge frequent and deployment intentional:
+Treat prompts such as “Implement completed,” “reuse existing review/tests,” “fast merge,” or “do not repeat verification” as Fast candidates. Actual repository and conversation evidence decides eligibility.
 
-| Lane | Selection | Endpoint | Budget |
-| --- | --- | --- | --- |
-| Fast Merge | Default for completed routine work | Valid evidence, exact commit/push/merge, remote alignment | Target 3 minutes; report a process bottleneck above 5 minutes. |
-| Target Deploy | Explicit deploy intent for one affected runtime surface | Fast Merge plus the narrow repository-native deployment and affected-path proof | Target 8 minutes, excluding an objective external queue or outage. |
-| Release | Formal release, dependency/environment change, or coupled high-risk delivery | Release matrix, formal deployment, revision proof, and critical journeys | Correctness first; no quick budget. |
+Use Fast when all are true:
 
-Batch deployment across several merged changes when the user does not need immediate runtime proof. Never upgrade Fast Merge to deployment merely because the repository has a deployment entry.
+- the base and shipping commits are identifiable;
+- `HEAD` is committed and staged, unstaged, and untracked state are empty;
+- the current conversation contains actual passing review and verification results applicable to `HEAD` and the selected mode;
+- no unresolved finding or relevant post-verification edit exists.
 
-## Leaf Skills
+A small evidence gap stays on Fast: close only that gap. Use Full only for dirty or uncommitted work, unclear ownership or commits, broadly missing evidence, mixed external edits, or a design/scope change.
 
-Solo Ship retains control. Invoke a leaf only when its branch fires:
+## Fast
 
-| Branch | Leaf skill | Trigger | Return condition |
-| --- | --- | --- | --- |
-| Review gap | `code-review` | Both Standards and Spec coverage are missing or invalid | Both axes have verdicts. When only one axis is missing, execute that axis directly instead of invoking the full leaf. |
-| Failure | `diagnosing-bugs` | A related check fails and routine diagnosis is insufficient | Root cause is fixed with regression evidence, or an objective external blocker is proven. |
-| Conflict | `resolving-merge-conflicts` | An actual merge conflict exists | Conflicts are resolved and affected evidence is refreshed. |
+Target: 3 minutes; report the concrete process bottleneck above 5 minutes.
 
-Git, GitHub, CI, deployment, health, and browser work is direct. Review fixes invalidate only affected evidence unless they expand scope or change the design.
+### 1. Detect
 
-## 1. Bind
+Read repository rules needed for Git integration. Inspect only status, branch/upstream, base, shipping commits, and the existing review/verification results in the current conversation. Derive `goal` and `mode`. The committed tree is the scope fence; do not create a snapshot. For `goal=merge`, do not inspect deployment entries.
 
-Read repository rules. Inspect branch, upstream, remotes, worktrees, staged/unstaged/untracked state, stash, base candidates, existing PR/CI, and deployment entries. Select `goal`, risk, repository profile, shipping set, and excluded set. Record the Entry Fence before mutation. Use the lightweight repository-native snapshot for clear ownership; escalate to the content-recoverable fence in `references/scope-fence.md` only for ambiguous, overlapping, or concurrent state. Read `references/git-topology-and-cleanup.md` before creating or using an integration worktree.
+Completion: the clean committed `HEAD`, shipping commits, base, required risk coverage, and endpoint are unambiguous.
 
-Collect prior review, test, build, CI, QA, and runtime evidence. Pin its base, covered content, command, environment, result, and risk surfaces according to `references/evidence-policy.md`.
+### 2. Merge
 
-Completion: every observed path has one ownership class; goal, risk, base, shipping set, excluded set, deployment entry, and existing evidence each have one unambiguous conclusion.
+Fetch the remote base. If it has not changed relevant contracts, dependencies, configuration, or call paths, retain evidence. Push the existing commits; do not stage, recommit, rewrite, or rerun valid checks. Use the repository-required PR or merge route, then prove the target commit is reachable from the remote integration branch.
 
-## 2. Validate
+If a relevant evidence gap appears, close only that gap and resume here. Invoke `resolving-merge-conflicts` only for an actual conflict; refresh only conflict-affected evidence.
 
-Derive the required risk surfaces from the shipping diff. Classify each evidence item as `reuse`, `rerun-minimal`, or `rerun-required`. Reuse valid development evidence; Git packaging operations alone do not invalidate it. Invoke `code-review` only for missing or invalid Standards/Spec axes. Run only checks needed to close uncovered or invalidated risk surfaces.
+Completion: the remote integration branch contains the exact verified commit and required CI is passing.
 
-After a fix, review the fix delta and rerun the failed check plus adjacent regression coverage. Rebind scope only when the fix expands intent, changes the design, touches excluded paths, or overlaps external work.
+### 3. Finish
 
-Completion: every required risk surface has applicable passing evidence; Standards and Spec each have a valid verdict; the verified content identity and residual risks are recorded.
+For `goal=merge`, stop after remote alignment.
 
-## 3. Merge
+For `goal=deploy`, use the narrowest repository-native deployment covering the affected runtime surface. Use development deployment for immediate engineering validation and formal CI/CD only for milestones or releases. Acquire target-environment health, revision where available, and affected-path proof after deployment.
 
-Stage exact shipping paths. Prove the staged content matches the verified content; if it does, do not repeat review or tests. Inspect staged status, name list, and diff, then commit by coherent theme and push the exact target. Use a PR only when requested or required by repository policy, protection, or CI.
+Completion: the selected endpoint is proven. Report result, reused or supplemented evidence, delivery target, and residual risk in a few lines.
 
-Fetch and compare the remote base immediately before merge. A base advance invalidates only evidence affected through changed contracts, dependencies, configuration, or call paths. Resolve actual conflicts through the conflict branch, refresh affected evidence, and merge by the repository-permitted route. Prove the target commit is reachable from the remote integration branch.
+## Full
 
-Completion: commits contain only the shipping set; staged and verified content agree; required CI passes; the target commit is on the remote integration branch and local/remote results agree.
+Use Full only when Fast eligibility fails.
 
-## 4. Finish
+### 1. Bind
 
-For `goal=merge`, prove remote integration and stop. Run a post-merge health or local-service refresh only when repository policy explicitly makes it part of merge rather than deployment.
+Inspect Git/worktree state and establish owned shipping and excluded sets. Read `references/scope-fence.md` only for dirty, ambiguous, overlapping, or concurrent state. Read `references/git-topology-and-cleanup.md` before creating an integration worktree.
 
-For `goal=deploy`, identify the narrowest repository deployment path that covers the affected runtime surface. Use the repository's development deployment path for immediate engineering validation and its formal CI/CD path for milestones or releases. Execute or wait with bounded retries. Prove the deployment job or command, running revision where available, and affected service/API/page/user path. Production and real external-program evidence must be obtained from the target environment after deployment; development evidence cannot substitute for it.
+Completion: base, ownership, shipping set, excluded set, endpoint, and risk mode are unambiguous.
 
-Read `references/git-topology-and-cleanup.md` before cleanup. Clean only owned temporary resources whose ownership, cleanliness, and merged state are proven. Preserve excluded and concurrent changes. Apply repository cleanup policy when it overrides generic branch-retention defaults.
+### 2. Close Gaps
 
-Completion: the selected endpoint is proven, required post-endpoint checks pass, owned temporary resources are cleaned or explicitly preserved for recovery, and excluded changes remain untouched.
+Reuse valid evidence. Derive required risk surfaces and produce only missing or invalidated review and verification. Invoke `code-review` only when both Standards and Spec axes are absent; execute one missing axis directly. Invoke `diagnosing-bugs` only when a related failure needs non-routine diagnosis. After a fix, review its delta and rerun the failed check plus adjacent regression coverage.
 
-## Objective Blockers
+Completion: every required risk surface has applicable passing evidence and no unresolved finding remains.
 
-Stop only after exhausting safe in-scope alternatives when one external condition prevents progress: unavailable credentials or protected-branch permission; persistently unavailable CI, deployment platform, or target service; unauthorized irreversible data work; an overlapping external edit that cannot be isolated; or incompatible business intent that current facts cannot resolve.
+### 3. Package and Finish
 
-Leave one recovery checkpoint containing goal, branch, base, latest commit, remote/PR/deployment state, last valid evidence, the single condition needed to resume, excluded paths, and any preserved snapshot cleanup instruction.
+Stage exact owned paths, prove staged content matches verified content, commit, push, merge, and prove remote alignment. For `goal=deploy`, perform the same narrow deployment rule as Fast. Read `references/git-topology-and-cleanup.md` only when owned temporary resources exist, and clean only proven owned, clean, merged resources.
 
-## Report
+Completion: the selected endpoint is proven and excluded or concurrent work remains untouched.
 
-Default to a compact report:
+## Blockers
 
-- result: merged/deployed commit and target;
-- evidence: reused, minimally rerun, and rerun checks;
-- delivery: push, merge, and deployment revision when applicable;
-- preserved: excluded or concurrent changes;
-- residual risk or blocker.
-
-Expand commands, findings, CI, deployment, cleanup, and recovery details only for `strict`, `release`, failure, or blocker cases.
+Stop only for an external condition that safe in-scope alternatives cannot resolve: missing permission or credentials, persistently unavailable required infrastructure, unauthorized irreversible data work, inseparable external edits, or incompatible business intent. Report the branch, base, commit, last valid evidence, remote/deployment state, and the single condition needed to resume.

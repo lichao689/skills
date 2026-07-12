@@ -1,4 +1,4 @@
 interface:
   display_name: "Solo Ship"
-  short_description: "Merge or deploy completed work with reusable evidence"
-  default_prompt: "Use $solo-ship to reuse valid evidence and fast-merge completed work by default; deploy only on explicit intent, using the narrowest affected runtime path."
+  short_description: "Fast-merge completed work without repeating valid checks"
+  default_prompt: "Use $solo-ship to try the Fast path first: reuse valid implementation evidence, push and merge the existing commit, and deploy only on explicit intent."
