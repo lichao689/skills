@@ -9,4 +9,4 @@ Read for `mode=auto` and whenever scope, failures, or deployment conditions may 
 | `strict` | Auth, permissions, security, data, public contracts, broad refactor, CI/deployment, concurrency | Independent affected-surface review, full affected matrix, required CI, and target evidence for `goal=deploy`. |
 | `release` | Formal release, coupled production surfaces, irreversible or high-blast-radius delivery | Repository release matrix, required CI/artifacts, deployment revision, canary, and critical journeys. |
 
-Escalate `quick` for meaningful multi-surface behavior, `strict` for data/auth/security/public contracts/deployment/hidden coupling, and `release` for a formal or coupled production release. Risk changes verification depth; `goal` independently selects integration or deployment.
+Escalate `quick` for meaningful multi-surface behavior, `strict` for data/auth/security/public contracts/deployment/hidden coupling, and `release` for a formal or coupled production release. Risk changes verification depth; `goal` independently selects merge or deployment.

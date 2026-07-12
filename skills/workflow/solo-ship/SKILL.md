@@ -1,6 +1,6 @@
 ---
 name: solo-ship
-description: Integrate or deploy completed solo-development work. Use when the user asks to ship, finish, land, merge, release, deploy, or carry completed work through production verification; reuse valid development evidence and rerun only invalidated coverage.
+description: Merge or deploy completed solo-development work. Use when the user asks to ship, finish, land, merge, release, deploy, or carry completed work through production verification; reuse valid development evidence and rerun only invalidated coverage.
 ---
 
 # Solo Ship
@@ -9,8 +9,8 @@ description: Integrate or deploy completed solo-development work. Use when the u
 
 Solo Ship validates completed work and carries it to one endpoint:
 
-- `integrate`: the target commit is on the remote integration branch.
-- `deploy`: `integrate` plus successful deployment, running-revision proof, and affected-path verification.
+- `merge`: the target commit is on the remote integration branch.
+- `deploy`: `merge` plus successful deployment, running-revision proof, and affected-path verification.
 
 A request only to commit or push uses direct Git commands. Do not invoke another shipping or deployment orchestrator. Use direct Git, GitHub, CI, deployment, HTTP, service, and browser tools or repository commands.
 
@@ -18,7 +18,7 @@ Defaults: `goal=auto mode=auto scope=auto evidence=auto pr=auto merge=auto clean
 
 | Parameter | Values | Binding |
 | --- | --- | --- |
-| `goal` | `auto`, `integrate`, `deploy` | `auto` selects `deploy` for deploy/release/production intent and `integrate` for ship/finish/land/merge intent. |
+| `goal` | `auto`, `merge`, `deploy` | `auto` selects `deploy` for deploy/release/production intent and `merge` for ship/finish/land/merge intent. |
 | `mode` | `auto`, `quick`, `standard`, `strict`, `release` | Verification depth; read `references/risk-levels.md` for selection or escalation. |
 | `scope` | `auto`, `session`, `entry`, `explicit` | Owned paths; read `references/scope-fence.md` when state is dirty, concurrent, or ambiguous. |
 | `evidence` | `auto`, `reuse`, `fresh` | Prior-evidence treatment; read `references/evidence-policy.md` whenever prior evidence exists. |
@@ -57,7 +57,7 @@ After a fix, review the fix delta and rerun the failed check plus adjacent regre
 
 Completion: every required risk surface has applicable passing evidence; Standards and Spec each have a valid verdict; the verified content identity and residual risks are recorded.
 
-## 3. Integrate
+## 3. Merge
 
 Stage exact shipping paths. Prove the staged content matches the verified content; if it does, do not repeat review or tests. Inspect staged status, name list, and diff, then commit by coherent theme and push the exact target. Use a PR only when requested or required by repository policy, protection, or CI.
 
@@ -67,7 +67,7 @@ Completion: commits contain only the shipping set; staged and verified content a
 
 ## 4. Finish
 
-For `goal=integrate`, run only repository-required post-merge health or local-service refresh checks.
+For `goal=merge`, run only repository-required post-merge health or local-service refresh checks.
 
 For `goal=deploy`, identify merge-triggered CI/CD, a repository deployment command, or an explicit service-update process. Execute or wait with bounded retries. Prove the deployment job, running revision, and affected service/API/page/user path. Production and real external-program evidence must be obtained from the target environment after deployment; development evidence cannot substitute for it.
 
@@ -85,7 +85,7 @@ Leave one recovery checkpoint containing goal, branch, base, latest commit, remo
 
 Default to a compact report:
 
-- result: integrated/deployed commit and target;
+- result: merged/deployed commit and target;
 - evidence: reused, minimally rerun, and rerun checks;
 - delivery: push, merge, and deployment revision when applicable;
 - preserved: excluded or concurrent changes;

@@ -1,4 +1,4 @@
 interface:
   display_name: "Solo Ship"
-  short_description: "Integrate or deploy completed work with reusable evidence"
-  default_prompt: "Use $solo-ship to validate existing evidence, close only coverage gaps, integrate the completed work, and deploy it only when the requested endpoint requires deployment."
+  short_description: "Merge or deploy completed work with reusable evidence"
+  default_prompt: "Use $solo-ship to validate existing evidence, close only coverage gaps, merge the completed work, and deploy it only when the requested endpoint requires deployment."
