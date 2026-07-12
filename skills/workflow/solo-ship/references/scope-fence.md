@@ -8,7 +8,11 @@ Derive ownership from the current conversation, user-named paths, task commits, 
 
 ## Entry Fence
 
-The Entry Fence is content-recoverable, not a path list. Before changing anything, create a Solo-Ship-owned snapshot resource in the secure host temporary directory, outside every repository and normal or integration worktree. Restrict it to the current user: POSIX directory mode `0700` and file mode `0600`, or the host's equivalent current-user-only ACL. Never place a snapshot beneath a worktree tree. Then record:
+Prefer a repository-native lightweight scope snapshot when ownership is clear and paths do not overlap external work. Record branch, upstream, `HEAD`, status, owned paths, excluded paths, and content hashes sufficient to detect later drift.
+
+Escalate to the content-recoverable fence below only when ownership is ambiguous, the same file contains mixed work, concurrent edits may overlap, or packaging requires reconstruction outside the current worktree.
+
+Create a Solo-Ship-owned snapshot resource in the secure host temporary directory, outside every repository and normal or integration worktree. Restrict it to the current user: POSIX directory mode `0700` and file mode `0600`, or the host's equivalent current-user-only ACL. Never place a snapshot beneath a worktree tree. Then record:
 
 - branch, upstream, `HEAD`, worktree list, stash list, staged/unstaged/deleted/renamed status;
 - tracked staged content as `git diff --cached --binary --full-index`, and tracked unstaged content as `git diff --binary --full-index`;

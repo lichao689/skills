@@ -1,16 +1,12 @@
 # Solo Ship Risk Levels
 
-Read this reference for `mode=auto` and whenever discovered scope, failures, or deployment conditions may require escalation. Risk controls verification depth; it never changes the Deploy endpoint.
+Read for `mode=auto` and whenever scope, failures, or deployment conditions may escalate verification. Repository policy is the source of truth for its test matrix.
 
-| Mode | Typical surfaces | Required verification depth |
+| Mode | Typical surfaces | Required depth |
 | --- | --- | --- |
-| `quick` | Docs, comments, copy, isolated style, obvious one-file fix | Focused review within both `code-review` axes, targeted check, cheap boundaries, deployment and affected post-deploy proof. |
-| `standard` | Normal feature or bug fix, local API, bounded refactor, UI workflow | Both review axes, affected tests and static checks, build where applicable, deployment and affected runtime/user-path proof. |
-| `strict` | Auth, permissions, security, data, public contracts, broad refactor, CI/deployment, concurrency | Both review axes, full affected-surface matrix, PR/CI status where configured, docs impact, deployment revision proof, broad post-deploy checks. |
-| `release` | Production release, multiple coupled surfaces, irreversible or high-blast-radius delivery | Repository-defined release matrix, all required CI and artifact checks, real external-path evidence, deploy job evidence, revision match, canary and critical user journeys. |
+| `quick` | Docs, comments, copy, isolated style, obvious small fix | Reuse valid review/checks; close only missing axes and cheap boundaries. |
+| `standard` | Normal feature or bug fix, local API, bounded refactor, UI workflow | Reuse valid review and affected checks; run build or runtime checks only for uncovered surfaces. |
+| `strict` | Auth, permissions, security, data, public contracts, broad refactor, CI/deployment, concurrency | Independent affected-surface review, full affected matrix, required CI, and target evidence for `goal=deploy`. |
+| `release` | Formal release, coupled production surfaces, irreversible or high-blast-radius delivery | Repository release matrix, required CI/artifacts, deployment revision, canary, and critical journeys. |
 
-Escalate `quick` to `standard` for multi-surface or meaningful user-visible behavior. Escalate to `strict` for data, auth, security, public API, deployment/CI, hidden coupling, or behavior-sensitive conflicts. Escalate to `release` when repository policy declares a release or the delivery spans coupled production surfaces.
-
-Never downgrade an explicit mode. A lower requested mode cannot waive repository policy, objective blockers, deployment, or post-deploy verification. Strict and release are verification depths, not instructions to invoke another orchestrator.
-
-All modes enter Deploy. Only after checking repository rules, CI, scripts, remote configuration, and service documentation may a repository with no deployment entry finish as `deployment: not applicable`.
+Escalate `quick` for meaningful multi-surface behavior, `strict` for data/auth/security/public contracts/deployment/hidden coupling, and `release` for a formal or coupled production release. Risk changes verification depth; `goal` independently selects integration or deployment.

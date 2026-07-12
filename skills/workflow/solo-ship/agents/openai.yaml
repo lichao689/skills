@@ -1,4 +1,4 @@
 interface:
   display_name: "Solo Ship"
-  short_description: "Ship completed solo work through deployment and production verification"
-  default_prompt: "Use $solo-ship to review, verify, publish, merge, deploy, validate, and safely clean up the completed branch."
+  short_description: "Integrate or deploy completed work with reusable evidence"
+  default_prompt: "Use $solo-ship to validate existing evidence, close only coverage gaps, integrate the completed work, and deploy it only when the requested endpoint requires deployment."

@@ -1,33 +1,53 @@
-# Evidence Policy
+# Evidence Contract
 
-Read this reference whenever historical review, test, build, CI, QA, or runtime evidence may cover the shipping set.
+Read whenever prior review, test, build, CI, QA, or runtime evidence may cover the shipping set.
 
-Each evidence record contains:
+## Evidence identity
 
-- current `HEAD` or applicable tree hash;
-- exact covered shipping paths;
-- exact command and execution environment;
-- exit code, failure count, and key result;
-- whether any relevant path changed after the result.
+Record enough identity to decide applicability without rerunning the work:
 
-Classify each record:
+- base commit;
+- covered paths and their content hashes;
+- relevant tests, dependency manifests, lockfiles, generated contracts, and configuration hashes;
+- exact command, environment, exit code, failure count, and result;
+- covered risk surfaces;
+- whether any relevant input changed afterward.
+
+Risk surfaces are `standards`, `spec`, `behavior`, `contract`, `architecture`, `security`, `build`, `runtime`, `visual`, and `external-program`. Testing does not replace review, and review does not replace behavioral or runtime proof.
+
+## Classification
 
 | Class | Predicate | Action |
 | --- | --- | --- |
-| `reuse` | Tree, paths, command target, and environment still apply; result passed | Cite it and prove no relevant drift. |
-| `rerun-minimal` | Core evidence applies but packaging or a wrapper changed | Rerun only staged-boundary checks, `git diff --check`, or the affected guard. |
-| `rerun-required` | Relevant source, environment, scope, or failure state changed | Rerun affected review and verification. |
+| `reuse` | Covered content, dependencies, command target, environment, result, and risk surface still apply | Cite the evidence and prove no relevant drift. |
+| `rerun-minimal` | Source identity still applies but a packaging boundary or unrelated wrapper changed | Run only content-identity, staged-boundary, `git diff --check`, or the affected guard. |
+| `rerun-required` | Relevant source, dependency, configuration, base interaction, environment, scope, or failure state changed | Rerun only affected review axes and verification surfaces. |
 
-Failed, blocked, stale, environment-mismatched, or scope-incomplete evidence is never reusable. A remaining related failure needs a baseline comparison showing it predates the shipping tree and the shipping tree adds no failures; otherwise diagnose it. Re-record evidence after every fix, conflict resolution, base advance, or packaging change that invalidates the prior tree or path set.
+Failed, blocked, environment-mismatched, or scope-incomplete evidence is never reusable. A related remaining failure needs a passing baseline comparison proving it predates the shipping content and adds no failure.
 
-## Evidence Modes
+## Invalidation matrix
 
-The `evidence` parameter from the main skill binds as follows:
+| Change | Review | Test/build | Runtime |
+| --- | --- | --- | --- |
+| Stage, commit, push, or commit-message only | retain | retain | retain |
+| Test-only change | retain unless intent changed | invalidate affected tests | retain |
+| Runtime source change | invalidate affected axes | invalidate affected checks | invalidate |
+| Dependency, lockfile, generated contract, or build configuration | invalidate affected axes | invalidate affected checks/build | invalidate |
+| Repository standard change | invalidate Standards | retain unless tooling changed | retain |
+| Specification or acceptance change | invalidate Spec | invalidate affected checks | invalidate affected acceptance |
+| Conflict resolution | invalidate affected axes | invalidate affected checks | invalidate |
+| Base advance with no relevant contract, dependency, configuration, or call-path effect | retain | retain or minimal guard | retain |
+| Base advance with relevant effect | invalidate affected axes | invalidate affected checks | invalidate |
+| Redeployment or target-environment change | retain | retain | reacquire from target |
+
+After a bounded fix, invalidate only evidence covering the changed content and its affected surfaces. Expand back to Bind only when intent, design, scope ownership, or excluded paths change.
+
+## Evidence modes
 
 | Mode | Binding |
 | --- | --- |
-| `auto` | Apply the `reuse`, `rerun-minimal`, and `rerun-required` classifications above to every relevant gate. |
-| `reuse` | Reuse only evidence proven eligible by the `reuse` predicate. Stale, failed, blocked, environment-mismatched, or out-of-scope evidence is rerun at the minimal or required depth indicated by its current classification. |
-| `fresh` | Treat every relevant review and verification gate as `rerun-required`. Historical evidence may inform command selection, but cannot satisfy a completion criterion. |
+| `auto` | Apply the classifications above. |
+| `reuse` | Reuse only evidence satisfying the full `reuse` predicate; otherwise choose the minimal valid rerun. |
+| `fresh` | Treat all relevant review and verification as `rerun-required`; prior evidence may select commands but cannot close a surface. |
 
-An explicit evidence mode changes evidence treatment only; it never weakens the current-tree, path, environment, or passing-result requirements.
+Post-deploy job, running revision, production health, target user paths, and real external-program execution are target-environment evidence. Acquire them after deployment whenever `goal=deploy`; pre-merge development evidence cannot satisfy them.
