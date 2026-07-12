@@ -1,4 +1,4 @@
 interface:
   display_name: "Solo Ship"
   short_description: "Merge or deploy completed work with reusable evidence"
-  default_prompt: "Use $solo-ship to validate existing evidence, close only coverage gaps, merge the completed work, and deploy it only when the requested endpoint requires deployment."
+  default_prompt: "Use $solo-ship to reuse valid evidence and fast-merge completed work by default; deploy only on explicit intent, using the narrowest affected runtime path."

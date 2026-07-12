@@ -29,6 +29,18 @@ Defaults: `goal=auto mode=auto scope=auto evidence=auto pr=auto merge=auto clean
 
 Explicit parameters may deepen checks but cannot waive repository policy or an objective blocker. Apply a matching file under `references/repository-profiles/` only when the repository root proves the match.
 
+## Delivery Lanes
+
+Keep merge frequent and deployment intentional:
+
+| Lane | Selection | Endpoint | Budget |
+| --- | --- | --- | --- |
+| Fast Merge | Default for completed routine work | Valid evidence, exact commit/push/merge, remote alignment | Target 3 minutes; report a process bottleneck above 5 minutes. |
+| Target Deploy | Explicit deploy intent for one affected runtime surface | Fast Merge plus the narrow repository-native deployment and affected-path proof | Target 8 minutes, excluding an objective external queue or outage. |
+| Release | Formal release, dependency/environment change, or coupled high-risk delivery | Release matrix, formal deployment, revision proof, and critical journeys | Correctness first; no quick budget. |
+
+Batch deployment across several merged changes when the user does not need immediate runtime proof. Never upgrade Fast Merge to deployment merely because the repository has a deployment entry.
+
 ## Leaf Skills
 
 Solo Ship retains control. Invoke a leaf only when its branch fires:
@@ -67,9 +79,9 @@ Completion: commits contain only the shipping set; staged and verified content a
 
 ## 4. Finish
 
-For `goal=merge`, run only repository-required post-merge health or local-service refresh checks.
+For `goal=merge`, prove remote integration and stop. Run a post-merge health or local-service refresh only when repository policy explicitly makes it part of merge rather than deployment.
 
-For `goal=deploy`, identify merge-triggered CI/CD, a repository deployment command, or an explicit service-update process. Execute or wait with bounded retries. Prove the deployment job, running revision, and affected service/API/page/user path. Production and real external-program evidence must be obtained from the target environment after deployment; development evidence cannot substitute for it.
+For `goal=deploy`, identify the narrowest repository deployment path that covers the affected runtime surface. Use the repository's development deployment path for immediate engineering validation and its formal CI/CD path for milestones or releases. Execute or wait with bounded retries. Prove the deployment job or command, running revision where available, and affected service/API/page/user path. Production and real external-program evidence must be obtained from the target environment after deployment; development evidence cannot substitute for it.
 
 Read `references/git-topology-and-cleanup.md` before cleanup. Clean only owned temporary resources whose ownership, cleanliness, and merged state are proven. Preserve excluded and concurrent changes. Apply repository cleanup policy when it overrides generic branch-retention defaults.
 
