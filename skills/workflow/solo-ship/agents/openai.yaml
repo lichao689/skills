@@ -1,4 +1,0 @@
-interface:
-  display_name: "Solo Ship"
-  short_description: "Fast-merge completed work without repeating valid checks"
-  default_prompt: "Use $solo-ship to try the Fast path first: reuse valid implementation evidence, push and merge the existing commit, and deploy only on explicit intent."

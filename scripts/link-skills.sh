@@ -79,6 +79,14 @@ install_into_dest() {
   mkdir -p "$dest"
   backup_root="$dest/.backup-$(date +%Y%m%d%H%M%S)"
 
+  # One-time skill rename migration: preserve the retired skill outside the
+  # direct discovery surface before installing fast-merge.
+  if [ -d "$REPO/skills/workflow/fast-merge" ] && [ -e "$dest/solo-ship" ]; then
+    mkdir -p "$backup_root"
+    mv "$dest/solo-ship" "$backup_root/solo-ship"
+    echo "retired solo-ship -> $backup_root/solo-ship"
+  fi
+
   find "$REPO/skills" -name SKILL.md -not -path '*/node_modules/*' -not -path '*/deprecated/*' -print0 |
   while IFS= read -r -d '' skill_md; do
     local src
