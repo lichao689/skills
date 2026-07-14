@@ -14,6 +14,6 @@ Record the covered commit or content hashes, relevant dependency/configuration i
 | `minimal` | Source identity still applies but packaging or an unrelated wrapper changed | Run only the boundary, diff, or affected guard. |
 | `refresh` | Relevant source, dependency, configuration, base interaction, environment, or failure state changed | Rerun affected review and verification surfaces. |
 
-Stage, commit, push, or commit-message changes retain evidence. Relevant source, dependency, generated contract, configuration, conflict resolution, or base-interaction changes invalidate only affected surfaces. Failed, blocked, environment-mismatched, or scope-incomplete evidence cannot close a surface.
+Stage, commit, merge commit, push, conflict-free rebase, or commit-message changes retain evidence. Relevant source, dependency, generated contract, configuration, conflict resolution, or base-interaction changes invalidate only affected surfaces. A conflict never invalidates unrelated evidence. Failed, blocked, environment-mismatched, or scope-incomplete evidence cannot close a surface.
 
-For `deploy-local`, merge evidence remains reusable, but current-host service state and affected-path behavior must be acquired after deployment.
+For `deploy-local`, local-merge evidence remains reusable and remote synchronization is not required, but current-host service state and affected-path behavior must be acquired after deployment.

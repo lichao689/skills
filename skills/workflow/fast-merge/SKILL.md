@@ -7,55 +7,56 @@ description: Integrate completed personal-development work through a local-first
 
 ## Contract
 
-Default endpoint: the exact verified task commit is reachable from the remote integration branch. Deployment is a separate event.
+Default endpoint: the exact verified task commit is reachable from local `main`. Do not fetch, push, open a PR, or deploy unless the user explicitly requests that additional endpoint.
 
-Explicit `deploy-local` endpoint: complete the default endpoint, then run the narrowest repository-native deployment on the current host and prove the affected path.
+Explicit `push` or remote-sync intent adds the remote-main endpoint. Explicit `deploy-local` intent adds current-host deployment after local integration; it does not imply push. If both are requested, prove both independently.
 
-The PR route is an escalation selected only when repository rules, remote protection, required review, or an existing PR require it. Otherwise integrate locally and push the integration commit directly. A commit-only or push-only request uses direct Git.
+The PR route is enabled only by repository rules, remote protection, required review, or an existing PR. A commit-only request stops after the commit. A push-only request updates the requested remote ref without inventing deployment or PR work.
 
 Keep Fast Merge as the sole integration orchestrator. Use `code-review`, `diagnosing-bugs`, or `resolving-merge-conflicts` only as bounded leaf work when their condition is present.
 
-## Steps
+## Workflow
 
-### 1. Bind
+### Bind scope and endpoint
 
-Read repository Git and validation rules. Inspect branch or detached state, worktrees, staged/unstaged/untracked files, upstream, remotes, base, stash list, and commits intended for integration. Read `references/scope-fence.md` only for dirty, mixed, concurrent, or ambiguous ownership. Read the WAVER profile when the repository root is WAVER.
+Read repository Git and validation rules. Inspect branch or detached state, worktrees, staged/unstaged/untracked files, upstream, remotes, base, stash list, and commits intended for integration.
 
-Select the endpoint from explicit intent: ordinary ship/finish/land/merge means default merge; only an explicit request to deploy on this machine adds `deploy-local`.
+- Read `references/scope-fence.md` only when state is dirty, mixed, concurrent, or ownership is ambiguous.
+- Read `references/repository-profiles/waver.md` only when the repository root is WAVER.
+- Ordinary merge, finish, land, ship, or close selects local `main` only.
+- Add remote main, PR, or current-host deployment only from explicit intent or an evidenced repository requirement.
 
-Completion: the owned task commits or paths, excluded state, integration branch, route, validation boundary, and endpoint are unambiguous.
+Before mutation, the owned paths or commits, excluded state, target refs, validation boundary, and requested endpoints must be unambiguous.
 
-### 2. Verify and Commit
+### Verify and commit
 
-Reuse review, tests, lint, build, and QA evidence while its covered content and environment still match. Read `references/evidence-policy.md` when applicability is uncertain. Close only missing or invalidated risk surfaces using repository-native checks and `references/risk-levels.md`.
+Choose validation from the changed behavior and repository policy, using `references/risk-levels.md` when the repository has no sufficient rule. Reuse review, tests, lint, build, and QA evidence while its covered content and environment still match; read `references/evidence-policy.md` only when that applicability is uncertain.
 
 For uncommitted owned work, stage exact paths, inspect the staged diff, run the required checks against that content, and commit it. Preserve external work in place.
 
-Completion: every task worktree selected for integration is clean, every task result has an immutable commit, applicable checks pass, and no relevant finding remains unresolved.
+Stage, commit, merge commit, and conflict-free rebase are packaging operations and never raise validation depth by themselves. A conflict invalidates evidence only for the affected surface. Every selected task must end with a clean worktree, an immutable commit, passing applicable checks, and no unresolved relevant finding.
 
-### 3. Integrate Locally
+### Integrate locally
 
-Fetch the remote integration branch and freeze its commit plus every task commit. Prefer the repository-native integration controller. Otherwise create an owned temporary integration worktree at the frozen remote base, merge task commits with explicit merge commits, and run the bounded integration validator before finalizing the candidate.
+Prefer the repository-native local-main controller. It should freeze local `main` and each task commit, create an owned temporary integration worktree, merge the task commits, run the bounded validator, then update local `main` only if its checkout is still clean and the frozen base has not drifted.
 
-On the local route, keep feature branches local and prepare one verified integration commit for the remote integration branch. On the PR route, prepare and push the feature branch required by that route. Invoke `resolving-merge-conflicts` only for an actual conflict, then refresh conflict-affected evidence.
+Do not fetch or push on this default route. Preserve the candidate when external dirtiness or main drift prevents the final fast-forward; use repository recovery rather than overwriting external work. Invoke `resolving-merge-conflicts` only for an actual conflict, then refresh conflict-affected evidence.
 
-Completion: one immutable verified integration candidate exists, contains every selected task commit exactly once, and is based on the current remote integration branch.
+Prove the task and integration commits are reachable from local `main`.
 
-### 4. Push and Prove
+### Add explicitly requested endpoints
 
-On the local route, push the integration candidate directly to the remote integration branch. On the PR route, push the feature branch, satisfy required checks and review, merge it, then fetch the integration branch.
+- For explicit push or remote sync, use the repository's strict remote route and prove the exact commits from remote refs and ancestry, not push output alone.
+- For the PR route, push the required feature branch, satisfy required checks and review, merge it, then prove the remote integration ref.
+- For `deploy-local`, deploy from the locally integrated commit with the narrowest repository-native current-host command and prove the affected service, API, page, artifact, or user path. Remote synchronization is not a prerequisite.
 
-Prove success from remote refs and ancestry rather than push output alone. Treat remote integration and root-checkout fast-forward synchronization as separate results; never repeat a confirmed remote merge because a local checkout cannot yet sync.
+Treat local integration, remote synchronization, PR completion, and deployment as separate results. Never repeat a proven endpoint merely because another endpoint is pending.
 
-Completion: the remote integration branch contains the exact task commits and verified integration commit, required remote checks pass, and remote ancestry is recorded.
+### Clean and report
 
-### 5. Close
+Read `references/git-topology-and-cleanup.md` only when cleanup is requested or is the normal repository-owned finalization step. Remove a feature worktree or branch only when ownership is proven, it is clean, and its task commit is reachable from the endpoint that preserves it. Local-main reachability is sufficient for a local-only result.
 
-For the default endpoint, record deployment as not requested. For `deploy-local`, use the narrowest current-host deployment command covering the changed runtime surface, then prove service state and the affected API, page, artifact, or user path. Remote release and broad release validation remain separate user-directed work.
-
-Clean only worktrees and branches that are proven owned, clean, and merged; read `references/git-topology-and-cleanup.md` before cleanup. Report commits, integration route, remote proof, reused and fresh evidence, optional local-deployment proof, preserved external state, and residual risk.
-
-Completion: the selected endpoint is proven, owned temporary resources are safely closed or explicitly preserved, and unrelated work remains untouched.
+Report task and integration commits, each requested endpoint and proof, reused and fresh evidence, cleaned or preserved resources, external state left untouched, and residual risk. Do not switch or detach the current session worktree unless the user explicitly asks.
 
 ## Blockers
 

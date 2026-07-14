@@ -5,20 +5,20 @@ Apply only when the repository root is WAVER. Read root and scoped `AGENTS.md`, 
 ## Integration
 
 - Parallel Agent work uses one feature branch and worktree per task; Codex-managed detached worktrees must first receive an owned feature branch.
-- Prefer `task agent:finish -- <TASK-ID>` so agentctl freezes `origin/main`, merges in a temporary integration worktree, runs `validate:checkpoint`, creates the merge commit, pushes it to `origin/main`, and confirms remote ancestry.
-- If agentctl cannot own the task lifecycle, follow the same local integration contract manually. Use a PR only when repository or remote facts require it.
-- Default completion is remote `main` alignment. Root-checkout synchronization and deployment are separate results.
+- For ordinary merge/finish/land/ship, use `task agent:merge-local -- <TASK-ID>` so agentctl freezes local `main`, merges in a temporary integration worktree, runs `validate:dev`, and safely fast-forwards local `main` without fetch or push.
+- Only explicit push or remote-sync intent uses `task agent:finish -- <TASK-ID>`, the strict `remote-main` route with checkpoint and remote ancestry proof. Use a PR only when repository or remote facts require it.
+- If agentctl cannot own the task lifecycle, follow the selected endpoint contract manually. Current session detached synchronization is not a default side effect.
 
 ## Validation
 
 - Reuse applicable development evidence and close only missing risk surfaces.
 - Run `task validate:dev` for dirty-tree patch integrity and targeted pytest/Vitest/lint/build checks selected by the repository test standard.
-- Run `task validate:checkpoint` for multi-Agent integration or before finalizing the integration commit.
+- Run `task validate:checkpoint` only for multi-task runtime-code integration, strict risk, or explicit user intent. Commit, merge, conflict-free rebase, and push do not trigger it.
 - Full-safe, release, external-program, and expensive validation require the authorization defined by WAVER rules.
 
 ## Current-host deployment
 
-Only explicit `deploy-local` intent adds deployment after remote `main` alignment:
+Only explicit `deploy-local` intent adds deployment after local `main` integration; push is not required:
 
 | Changed surface | Narrow current-host entry |
 | --- | --- |
