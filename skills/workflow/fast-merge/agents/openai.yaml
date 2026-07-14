@@ -1,4 +1,4 @@
 interface:
   display_name: "Fast Merge"
   short_description: "Local-first integration for completed personal work"
-  default_prompt: "Use $fast-merge to locally integrate verified work, push and prove the remote main result, and deploy on this machine only if I explicitly ask."
+  default_prompt: "Use $fast-merge to integrate verified work into local main. Push, open a PR, or deploy on this machine only if I explicitly ask."
