@@ -22,7 +22,6 @@ cd ~/Developer/lichao689-skills
 
 ## 技能
 
-- [`fast-merge`](./skills/workflow/fast-merge/SKILL.md)：将已完成的个人开发工作受控合并到本地 `main`；只有明确要求时才 push、创建 PR 或追加当前主机定向部署。
 - [`code-simplifier`](./skills/workflow/code-simplifier/SKILL.md)：对最近改动过的代码做行为不变的简化与清理，去掉多余防卫、明显废话注释和不必要抽象，并对齐仓库规范。
 - [`rules-curator`](./skills/workflow/rules-curator/SKILL.md)：在写入根级 agent 规则文件前，整理和判断哪些规则值得长期保留。
 - [`setup`](./skills/setup/SKILL.md)：安装、检查和修复这个技能包在 Codex 与 Claude Code 中的配置。
@@ -33,8 +32,6 @@ cd ~/Developer/lichao689-skills
 ```bash
 ./scripts/list-skills.sh
 ./scripts/link-skills.sh --target codex
-./scripts/check-fast-merge-deps.sh
-./scripts/setup-fast-merge.sh --target all
 ```
 
 `link-skills.sh` 默认会为 Codex 复制技能目录，为 Claude 创建链接。已有的非链接技能目录不会被删除，而是移动到带时间戳的备份目录。
@@ -42,7 +39,3 @@ cd ~/Developer/lichao689-skills
 ## 外部技能同步
 
 `autoreview` 每天由 GitHub Actions 检查一次上游更新。检测到变化后，工作流会同步完整技能目录、上游许可证和目录 tree 哈希，更新专用分支 `automation/sync-autoreview`，并自动创建或刷新合并到 `main` 的 PR。也可以在 Actions 页面手动运行 `Sync autoreview skill`。
-
-## 备注
-
-`fast-merge` 只依赖 Matt Pocock skills 中的三个阶段技能：`code-review`、`diagnosing-bugs` 和 `resolving-merge-conflicts`。Git、GitHub CLI 和仓库验证命令属于工具能力，不是技能依赖。本仓库不会自动安装外部依赖；可以运行 `./scripts/check-fast-merge-deps.sh` 查看当前宿主可访问的技能与工具。
