@@ -1,0 +1,81 @@
+name: Sync autoreview skill
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-autoreview
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Fetch upstream skill
+        env:
+          UPSTREAM_REPOSITORY: https://github.com/openclaw/agent-skills.git
+        run: |
+          upstream="$RUNNER_TEMP/openclaw-agent-skills"
+          git clone --depth 1 --filter=blob:none --sparse "$UPSTREAM_REPOSITORY" "$upstream"
+          git -C "$upstream" sparse-checkout set skills/autoreview
+
+          rm -rf skills/external/autoreview
+          mkdir -p skills/external/autoreview
+          cp -a "$upstream/skills/autoreview/." skills/external/autoreview/
+          cp "$upstream/LICENSE" skills/external/autoreview/LICENSE.upstream
+          git -C "$upstream" rev-parse HEAD:skills/autoreview > skills/external/autoreview/.upstream-tree
+
+      - name: Commit upstream changes
+        id: changes
+        run: |
+          git add --all -- skills/external/autoreview
+          git update-index --chmod=+x \
+            skills/external/autoreview/scripts/autoreview \
+            skills/external/autoreview/scripts/test-review-harness
+          if git diff --cached --quiet -- skills/external/autoreview; then
+            echo "autoreview is already up to date"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          upstream_tree=$(cat skills/external/autoreview/.upstream-tree)
+          branch="automation/sync-autoreview"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git commit -m "chore(autoreview): sync upstream tree ${upstream_tree:0:12}"
+          remote_sha=$(git ls-remote --heads origin "refs/heads/$branch" | cut -f1)
+          if [ -n "$remote_sha" ]; then
+            git push --force-with-lease="refs/heads/$branch:$remote_sha" origin "HEAD:refs/heads/$branch"
+          else
+            git push origin "HEAD:refs/heads/$branch"
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="automation/sync-autoreview"
+          open_prs=$(gh pr list --base main --head "$branch" --state open --json number --jq length)
+          if [ "$open_prs" -eq 0 ]; then
+            gh pr create \
+              --base main \
+              --head "$branch" \
+              --title "chore(autoreview): sync upstream skill" \
+              --body "Automated sync from \`openclaw/agent-skills\`, including the complete \`skills/autoreview\` directory and upstream license."
+          else
+            echo "existing autoreview sync PR updated"
+          fi
